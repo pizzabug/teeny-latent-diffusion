@@ -5,6 +5,7 @@ import torch
 
 from model.CringeLDM import CringeLDM
 from PIL import Image
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 # Inference of UNET model
 # Path: inference.py
@@ -14,7 +15,7 @@ from PIL import Image
 def convert_to_rgb(x):
     x = x.squeeze(0)
     x = x.permute(1, 2, 0)
-    x = x.detach().numpy()
+    x = x.detach().to("cpu").numpy()
     x = (x - x.min()) / (x.max() - x.min())
     x = (x * 255).astype(np.uint8)
     return x
@@ -44,3 +45,20 @@ def import_image_from_path(path = "/mnt/e/Source/unsplash-lite-corpus-preprocess
     img = np.array(img)
     # Convert the image to Conv2d input
     img = convert_to_conv2d(img)
+
+class RegularCheckpoint(ModelCheckpoint):
+    def __init__(self, period = 1000):
+        super().__init__()
+        self.period = period
+    
+    def save_checkpoint(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+        ckptPath = f"checkpoints/model-{pl_module}.ckpt"
+        trainer.save_checkpoint(ckptPath)
+        trainer.save_checkpoint("checkpoints/model.ckpt")
+
+    def on_train_batch_end(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", 
+        *args, **kwargs) -> None:
+        if trainer.global_step % self.period == 0:
+            self.save_checkpoint(trainer, pl_module)

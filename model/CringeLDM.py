@@ -32,6 +32,8 @@ class CringeBERTWrapper:
 
     def model_output (self, input_ids : torch.Tensor) -> BaseModelOutput:
         with torch.no_grad():
+            if torch.cuda.is_available():
+                input_ids = input_ids.cuda()
             output = self.bert_model(input_ids)
             return output.last_hidden_state
 
@@ -57,11 +59,12 @@ class CringeLDM(pl.LightningModule):
         self.UNet = UNetWithCrossAttention(256,256,768)
         # Image space decoder
         self.imageSpaceDecoder = nn.Sequential(
-            nn.Conv2d(3, 6, 3, padding='same'),
+            nn.Conv2d(3, 6, 12, padding='same'),
             nn.ReLU(),
-            nn.Conv2d(6, 3, 3, padding='same'),
+            nn.Conv2d(6, 3, 24, padding='same'),
+            nn.Dropout(0.02),
             nn.ReLU(),
-            nn.Conv2d(3, 3, 3, padding='same'),
+            nn.Conv2d(3, 3, 12, padding='same'),
         )
 
     """
@@ -76,7 +79,7 @@ class CringeLDM(pl.LightningModule):
         # Load the image
         if x is None:
             # Generate noise
-            x = torch.randn(1, 3, 256, 256)
+            x = torch.randn(q.shape[0], 3, 256, 256)
         
         if torch.cuda.is_available():
             x = x.cuda()
@@ -142,7 +145,14 @@ class CringeLDM(pl.LightningModule):
         return loss
 
     def forward_with_q (self, query, x = None, steps = 20):
+        
         # Get the BERT output
         q = self.bertWrapper.inference(query)
+
+        if torch.cuda.is_available():
+            q = q.cuda()
+            if (x != None):
+                x = x.cuda()
+
         # Forward pass
         return self.forward(q, x, steps)

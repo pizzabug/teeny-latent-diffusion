@@ -10,17 +10,23 @@ from utils import convert_to_rgb, import_image_from_path, export_image_to_png
 
 print ("So you're uh... inferencing.")
 
+# Load the model
+model = CringeLDM()
+model.load_state_dict(torch.load("checkpoints/model.pt"))
+
+if (torch.cuda.is_available()):
+    model = model.cuda()
+    print ("Using GPU.")
+
 while (True):
     q = input("> ")
 
-    # Load the model
-    modelWrapper = CringeLDM()
 
     # Import an image
     img = import_image_from_path()
 
     # Load the image
-    res = modelWrapper.forward_with_q(query=q, x=img, steps=1);
+    res = model.forward_with_q(query=q, x=img, steps=1);
 
     # Convert the image to RGB
     res = convert_to_rgb(res)

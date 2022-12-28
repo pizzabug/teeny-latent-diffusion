@@ -130,3 +130,10 @@ dmypy.json
 
 # Binaries
 **.deb
+
+# Checkpoints
+/checkpoints            
+# Lightning logs
+/lightning_logs         
+# Tensorboard logs
+/tb_logs                
