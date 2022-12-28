@@ -19,16 +19,18 @@ training_set, validation_set = torch.utils.data.random_split(dataset, [int(len(d
 train_loader = DataLoader(training_set, batch_size=1)
 val_loader = DataLoader(validation_set, batch_size=1)
 
+
 # model
 model = CringeLDM().to("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Logger
 logger = TensorBoardLogger("tb_logs", name="cringeldm")
 
+trainer = pl.Trainer(accelerator='gpu', precision=16, limit_train_batches=0.5, callbacks=[RegularCheckpoint(250),], logger=logger)
+
 # Load checkpoint if it exists
 if (os.path.exists("checkpoints/model.ckpt")):
-    model.load_from_checkpoint("checkpoints/model.ckpt")
+    trainer.fit(model, train_loader, val_loader, ckpt_path="checkpoints/model.ckpt")
+else:
+    trainer.fit(model, train_loader, val_loader)
 
-# training
-trainer = pl.Trainer(accelerator='gpu', precision=16, limit_train_batches=0.5, callbacks=[RegularCheckpoint(250),], logger=logger)
-trainer.fit(model, train_loader, val_loader)

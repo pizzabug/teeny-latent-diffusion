@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 import pytorch_lightning as pl
 import torch
 
@@ -47,16 +48,45 @@ def import_image_from_path(path = "/mnt/e/Source/unsplash-lite-corpus-preprocess
     img = convert_to_conv2d(img)
 
 class RegularCheckpoint(ModelCheckpoint):
-    def __init__(self, period = 1000):
+    def __init__(self, model, period = 1000):
         super().__init__()
+        self.model = model
         self.period = period
     
     def save_checkpoint(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
-        ckptPath = f"checkpoints/model-{pl_module}.ckpt"
-        trainer.save_checkpoint(ckptPath)
+        # Create a new directory for the checkpoint if it doesnt already exist
+        if not os.path.exists(f"checkpoints/{pl_module.global_step}"):
+            os.mkdir(f"checkpoints/{pl_module.global_step}")
+        
+        # Save the model
+        ckptPath = f"checkpoints/{pl_module.global_step}/model.ckpt"
         trainer.save_checkpoint("checkpoints/model.ckpt")
+        trainer.save_checkpoint(ckptPath)
 
+        # Then go save some outputs!
+        test_captions = [
+            "lady on a walk",
+            "dog sitting",
+            "the sea",
+            "mountains",
+            "houses"
+        ]
+
+        for caption in test_captions:
+            # Load the image
+            res = self.model.forward_with_q(query=caption);
+
+            # Convert the image to RGB
+            res = convert_to_rgb(res)
+
+            # Show the image
+            plt.imshow(res)
+
+            # Export the image
+            export_image_to_png(res, f"checkpoints/{pl_module.global_step}/{caption}.png")
+            export_image_to_png(res, f"checkpoints/{caption}.png")
+        
     def on_train_batch_end(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", 
         *args, **kwargs) -> None:

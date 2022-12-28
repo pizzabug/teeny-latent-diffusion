@@ -132,7 +132,7 @@ dmypy.json
 **.deb
 
 # Checkpoints
-/checkpoints            
+/checkpoints/**/**.ckpt           
 # Lightning logs
 /lightning_logs         
 # Tensorboard logs

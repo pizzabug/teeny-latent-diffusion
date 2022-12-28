@@ -41,6 +41,8 @@ class CringeBERTWrapper:
         with torch.no_grad():
             # Encode the text using BERT
             input_ids : Tensor = torch.tensor(self.bert_tokenizer.encode(query)).unsqueeze(0)  # Add batch dimension
+            # Normalise so that all values are between 0 and 1
+            input_ids = (input_ids + 1) / 2
             return self.model_output(input_ids)
 
 """
@@ -101,7 +103,7 @@ class CringeLDM(pl.LightningModule):
         This is the optimizer for the model.
     """
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-5)
         return optimizer
     
     """
