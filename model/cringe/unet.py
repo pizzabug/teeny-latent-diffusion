@@ -10,13 +10,13 @@ class UNetLayerWithCA(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_channels, query_channels):
         super(UNetLayerWithCA, self).__init__()
         self.conv1 = nn.Conv2d(in_channels, in_channels, kernel_size=kernel_channels, padding='same')
-        self.conv2 = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_channels, padding='same')
         self.cross_attention = CrossAttention(256, 256, query_channels)
+        self.conv2 = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_channels, padding='same')
     
     def forward(self, x, query):
         x = self.conv1(x)
-        x = self.conv2(x)
         x = self.cross_attention(x, query)
+        x = self.conv2(x)
         return x, query
 
 class UNetWithCrossAttention(nn.Module):

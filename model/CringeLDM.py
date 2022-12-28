@@ -1,6 +1,13 @@
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import transformers
+
+from torch import Tensor
+from torch.nn import functional as F
+from torch.utils.data import DataLoader
+from torch.utils.data import random_split
+from transformers import BertModel
 from transformers.utils import ModelOutput
 from transformers.modeling_outputs import BaseModelOutput
 
@@ -15,73 +22,127 @@ from model.cringe.unet import UNetWithCrossAttention
 class CringeBERTWrapper:
     def loadModel (self):
         self.bert_model = transformers.BertModel.from_pretrained('bert-base-uncased')
+        if torch.cuda.is_available():
+            self.bert_model = self.bert_model.cuda()
         self.bert_tokenizer = transformers.BertTokenizer.from_pretrained('bert-base-uncased')
 
     def __init__(self):
         self.loadModel()
         pass
 
+    def model_output (self, input_ids : torch.Tensor) -> BaseModelOutput:
+        with torch.no_grad():
+            output = self.bert_model(input_ids)
+            return output.last_hidden_state
+
     def inference (self, query):
         with torch.no_grad():
             # Encode the text using BERT
-            input_ids = torch.tensor(self.bert_tokenizer.encode(query)).unsqueeze(0)  # Add batch dimension
-            modelOutput : BaseModelOutput = self.bert_model(input_ids)
-            return  modelOutput.last_hidden_state # Take the output for the first input in the batch
+            input_ids : Tensor = torch.tensor(self.bert_tokenizer.encode(query)).unsqueeze(0)  # Add batch dimension
+            return self.model_output(input_ids)
 
 """
     LDM Model
 
     This is the definition of the LDM model.
 """
-class CringeLDM(nn.Module):
+class CringeLDM(pl.LightningModule):
     def __init__(self):
         super().__init__()
+        # BERT Wrapper for the text encoding
+        # This should be an integrated part of the model
+        # in the future
+        self.bertWrapper = CringeBERTWrapper()
+        # Latent space
         self.UNet = UNetWithCrossAttention(256,256,768)
+        # Image space decoder
+        self.imageSpaceDecoder = nn.Sequential(
+            nn.Conv2d(3, 6, 3, padding='same'),
+            nn.ReLU(),
+            nn.Conv2d(6, 3, 3, padding='same'),
+            nn.ReLU(),
+            nn.Conv2d(3, 3, 3, padding='same'),
+        )
 
-    def forward(self, x, query):
-        # Do Denoising UNet
-        x = self.UNet(x, query)
-        return x
-
-"""
-    LDM Wrapper
-
-    This is a wrapper for the LDM model.
-"""
-class CringeLDMWrapper:
-    def __init__(self, bert: CringeBERTWrapper = None, ldm = None):
-        if bert is None:
-            self.bert = CringeBERTWrapper()
-            self.bert.loadModel()
-        else:
-            self.bert = bert
+    """
+        forward
         
-        if ldm is None:
-            self.createModel()
-        else:
-            self.ldm = ldm
-
-    #def __init__(self, ldm, bert: CringeBERTWrapper):
-    #    self.ldm = ldm
-    #    self.bert = bert
-    
-    def createModel (self):
-        self.ldm = CringeLDM()
-        self.loss_fn = nn.CrossEntropyLoss()
-        self.optimizer = torch.optim.Adam(self.ldm.parameters(), lr=1e-3)
-
-    def inference (self, steps = 20, query = "", img = None):
+        self: The model
+        q: Query tensor from BERT
+        x: Image tensor
+        steps: Number of steps to denoise the image
+    """
+    def forward(self, q, x = None, steps = 20):        
         # Load the image
-        if img is None:
+        if x is None:
             # Generate noise
-            img = torch.randn(1, 3, 256, 256)
+            x = torch.randn(1, 3, 256, 256)
         
-        # Get the BERT output
-        query = self.bert.inference(query)
+        if torch.cuda.is_available():
+            x = x.cuda()
+            q = q.cuda()
 
         # We denoise for multiple steps
         for i in range(steps):
-            img = self.ldm(img, query)
-        
-        return img
-        
+            # This is the latent space
+            x = self.UNet(x, q)
+
+            # Image space decoder
+            x = self.imageSpaceDecoder(x)
+
+        return x
+
+    """
+        configure_optimizers
+
+        This is the optimizer for the model.
+    """
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        return optimizer
+    
+    """
+        training_step
+    """
+    def training_step(self, train_batch, batch_idx):
+        # Grab batch
+        y, q = train_batch
+
+        # Cuda up if needed
+        if torch.cuda.is_available():
+            y = y.cuda()
+            q = q.cuda()
+
+        # Get q
+        q = self.bertWrapper.model_output(q)
+        # Forward pass
+        y_hat = self.forward(q)
+        loss = F.mse_loss(y_hat, y)
+        self.log('train_loss', loss)
+        return loss
+    
+    """
+        validation_step
+    """
+    def validation_step(self, val_batch, batch_idx):
+        # Grab batch
+        y, q = val_batch
+
+        # Cuda up if needed
+        if torch.cuda.is_available():
+            y = y.cuda()
+            q = q.cuda()
+
+        # Get q
+        q = self.bertWrapper.model_output(q)
+        # Forward pass
+        y_hat = self(q)
+        loss = F.mse_loss(y_hat, y)
+        self.log('val_loss', loss)
+        return loss
+
+    def forward_with_q (self, query, x = None, steps = 20):
+        # Get the BERT output
+        q = self.bertWrapper.inference(query)
+        # Forward pass
+        return self.forward(q, x, steps)

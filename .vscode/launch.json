@@ -11,6 +11,14 @@
             "program": "${workspaceFolder}/inference.py",
             "console": "integratedTerminal",
             "justMyCode": true
+        }, 
+        {
+            "name": "Python: Train",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/train.py",
+            "console": "integratedTerminal",
+            "justMyCode": false
         }
     ]
 }
