@@ -46,12 +46,21 @@ class UnsplashLiteDataset(Dataset):
         return len(self.image_paths)
 
     def __getitem__(self, idx):
-        image = Image.open(self.image_paths[idx])
-        image = image.resize((256, 256))
-        image = np.array(image)
-        image = image / 255.0
-        image = image.transpose(2, 0, 1)
-        image = torch.tensor(image, dtype=torch.float32)
-        
+        path = self.image_paths[idx]
+        if (not os.path.exists(path)):
+            image = None
+        else:
+            image = Image.open(path)
+            image = image.resize((256, 256))
+            image = np.array(image)
+            image = image / 255.0
+            image = image.transpose(2, 0, 1)
+            image = torch.tensor(image, dtype=torch.float32)
+            
+            if image.shape != (3, 256, 256):
+                print("Warning: image shape is not (3, 256, 256). Skipping")
+                print(image.shape)
+                image = None
+
         q = self.image_captions[idx]
         return image, q

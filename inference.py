@@ -8,19 +8,18 @@ from PIL import Image
 
 from utils import convert_to_rgb, import_image_from_path, export_image_to_png
 
-print ("So you're uh... inferencing.")
+def load_model ():
+    # Load the model
+    model = CringeLDM()
+    model.load_state_dict(torch.load("checkpoints/model.ckpt")['state_dict'])
 
-# Load the model
-model = CringeLDM()
-model.load_state_dict(torch.load("checkpoints/model.pt"))
+    if (torch.cuda.is_available()):
+        model = model.cuda()
+        print ("Using GPU.")
 
-if (torch.cuda.is_available()):
-    model = model.cuda()
-    print ("Using GPU.")
+    return model
 
-while (True):
-    q = input("> ")
-
+def inference(model, q=""):
 
     # Import an image
     img = import_image_from_path()
@@ -35,3 +34,13 @@ while (True):
     plt.imshow(res)
 
     export_image_to_png(res, "out.png")
+
+def inference_loop():
+    print ("So you're uh... inferencing.")
+    model = load_model()
+    while True:
+        q = input("> ")
+        inference(model, q)
+
+if __name__ == "__main__":
+    inference_loop()

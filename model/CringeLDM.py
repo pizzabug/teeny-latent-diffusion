@@ -20,14 +20,14 @@ from model.cringe.unet import UNetWithCrossAttention
     dataset as the LDM model, but for now we just use the pretrained BERT model.
 """
 class CringeBERTWrapper:
-    def loadModel (self):
+    def loadModel (self,cpu):
         self.bert_model = transformers.BertModel.from_pretrained('bert-base-uncased')
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() & (not cpu):
             self.bert_model = self.bert_model.cuda()
         self.bert_tokenizer = transformers.BertTokenizer.from_pretrained('bert-base-uncased')
 
-    def __init__(self):
-        self.loadModel()
+    def __init__(self, cpu=False):
+        self.loadModel(cpu)
         pass
 
     def model_output (self, input_ids : torch.Tensor) -> BaseModelOutput:
@@ -113,6 +113,10 @@ class CringeLDM(pl.LightningModule):
         # Grab batch
         y, q = train_batch
 
+        # Skip if image is None
+        if y is None:
+            return None
+
         # Cuda up if needed
         if torch.cuda.is_available():
             y = y.cuda()
@@ -124,6 +128,11 @@ class CringeLDM(pl.LightningModule):
         y_hat = self.forward(q)
         loss = F.mse_loss(y_hat, y)
         self.log('train_loss', loss)
+
+        # Skip if resulting loss is NaN or Inf
+        if torch.isnan(loss) or torch.isinf(loss):
+            return None
+
         return loss
     
     """
@@ -149,7 +158,12 @@ class CringeLDM(pl.LightningModule):
     def forward_with_q (self, query, x = None, steps = 20):
         
         # Get the BERT output
-        q = self.bertWrapper.inference(query)
+        q = torch.tensor(self.bertWrapper.bert_tokenizer.encode(query)).unsqueeze(0)
+        
+        if torch.cuda.is_available():
+            q = q.cuda()
+
+        q = self.bertWrapper.model_output(q)
 
         if torch.cuda.is_available():
             q = q.cuda()
