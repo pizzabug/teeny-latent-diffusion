@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 
 from data.dirtycollate import dirty_collate
 
-from model.CringeLDM import CringeLDM
+from model.CringeLDM import CringeLDMModel
 from data.unsplashlite import UnsplashLiteDataset
 from utils import RegularCheckpoint, train_save_checkpoint
 
@@ -23,15 +23,19 @@ val_loader = DataLoader(validation_set, batch_size=1, collate_fn=dirty_collate)
 
 
 # model
-model = CringeLDM().to("cuda:0" if torch.cuda.is_available() else "cpu")
+model = CringeLDMModel().to("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Logger
 logger = TensorBoardLogger("tb_logs", name="cringeldm")
 
-trainer = pl.Trainer(accelerator='gpu', precision=16, limit_train_batches=0.5, callbacks=[RegularCheckpoint(model, 250),], logger=logger)
 
-# Load checkpoint if it exists 
-if (os.path.exists("checkpoints/model.ckpt")):
-    trainer.fit(model, train_loader, val_loader, ckpt_path="checkpoints/model.ckpt")
-else:
-    trainer.fit(model, train_loader, val_loader)
+trainer = pl.Trainer(accelerator='gpu', precision=16, limit_train_batches=0.5, callbacks=[RegularCheckpoint(model, 250),], logger=logger)
+while True:
+    try:
+        # Load checkpoint if it exists 
+        if (os.path.exists("checkpoints/model.ckpt")):
+            trainer.fit(model, train_loader, val_loader, ckpt_path="checkpoints/model.ckpt")
+        else:
+            trainer.fit(model, train_loader, val_loader)
+    except:
+        pass

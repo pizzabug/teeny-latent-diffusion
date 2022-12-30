@@ -48,7 +48,7 @@ class UnsplashLiteDataset(Dataset):
     def __getitem__(self, idx):
         path = self.image_paths[idx]
         if (not os.path.exists(path)):
-            image = None
+            return None, None
         else:
             image = Image.open(path)
             image = image.resize((256, 256))
@@ -60,7 +60,7 @@ class UnsplashLiteDataset(Dataset):
             if image.shape != (3, 256, 256):
                 print("Warning: image shape is not (3, 256, 256). Skipping")
                 print(image.shape)
-                image = None
+                return None, None
 
         q = self.image_captions[idx]
         return image, q

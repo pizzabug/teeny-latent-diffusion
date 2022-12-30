@@ -7,11 +7,14 @@ from torch import Tensor
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from torch.utils.data import random_split
-from transformers import BertModel
+from transformers import (
+    BertModel,
+    BertTokenizer
+)
 from transformers.utils import ModelOutput
 from transformers.modeling_outputs import BaseModelOutput
 
-from model.cringe.unet import UNetWithCrossAttention
+from model.cringe.old_unet import UNetWithCrossAttention
 
 """
     BERT Wrapper
@@ -46,16 +49,36 @@ class CringeBERTWrapper:
             return self.model_output(input_ids)
 
 """
+    BERT Model
+
+    This is the BERT model. It is used to encode the text.
+"""
+class CringeBERTEncoder(pl.LightningModule):
+    def __init__(self, hparams = None):
+        super().__init__()
+
+        # Initialise BERT model
+        self.bert = BertModel.from_pretrained('bert-base-uncased')
+        self.bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+
+        # Define additional layers
+
+"""
     LDM Model
 
     This is the definition of the LDM model.
 """
-class CringeLDM(pl.LightningModule):
-    def __init__(self):
+class CringeLDMModel(pl.LightningModule):
+    def __init__(self, hparams = None):
         super().__init__()
-        # BERT Wrapper for the text encoding
-        # This should be an integrated part of the model
-        # in the future
+        self.inSize = 256
+        self.dropout = 0.02
+
+        """
+            BERT Wrapper for the text encoding
+            This should be an integrated part of the model
+            in the future
+        """
         self.bertWrapper = CringeBERTWrapper()
         # Latent space
         self.UNet = UNetWithCrossAttention(256,256,768)
@@ -64,7 +87,7 @@ class CringeLDM(pl.LightningModule):
             nn.Conv2d(3, 6, 12, padding='same'),
             nn.ReLU(),
             nn.Conv2d(6, 3, 24, padding='same'),
-            nn.Dropout(0.02),
+            nn.Dropout(self.dropout),
             nn.ReLU(),
             nn.Conv2d(3, 3, 12, padding='same'),
         )

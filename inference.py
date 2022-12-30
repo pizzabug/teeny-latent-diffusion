@@ -3,15 +3,16 @@ import numpy as np
 import pytorch_lightning as pl
 import torch
 
-from model.CringeLDM import CringeLDM
+from model.CringeLDM import CringeLDMModel
 from PIL import Image
 
 from utils import convert_to_rgb, import_image_from_path, export_image_to_png
 
-def load_model ():
+def load_model (model_dir=None):
     # Load the model
-    model = CringeLDM()
-    model.load_state_dict(torch.load("checkpoints/model.ckpt")['state_dict'])
+    model = CringeLDMModel()
+    if model_dir is not None:
+        model.load_state_dict(torch.load("checkpoints/model.ckpt")['state_dict'])
 
     if (torch.cuda.is_available()):
         model = model.cuda()

@@ -1,44 +1,81 @@
-# To incorporate cross-attention into the forward step of the U-Net, you can pass the output of a BERT encoder as the query input to the cross-attention module at each layer of the U-Net. Here is an example of how you might do this in Python using PyTorch:
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import transformers
-import numpy as np
 
-from model.cringe.cross_attention import CrossAttention
+from torch import Tensor
+from torch.nn import functional as F
+from torch.utils.data import DataLoader
+from torch.utils.data import random_split
+from transformers import (
+    BertModel,
+    BertTokenizer
+)
 
-class UNetLayerWithCA(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_channels, query_channels):
-        super(UNetLayerWithCA, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels, in_channels, kernel_size=kernel_channels, padding='same')
-        self.cross_attention = CrossAttention(256, 256, query_channels)
-        self.conv2 = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_channels, padding='same')
-        self.dropout = torch.nn.Dropout(0.02)
+"""
+    Base Convolutional Block
 
-    def forward(self, x, query):
+    This is a double convolutional block. It is used in the UNet model.
+"""
+class ConvBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, hparams = None):
+        super(ConvBlock, self).__init__()
+        self.dropout = 0.02
+
+        # First convolution
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, 3, padding='same'),
+            nn.BatchNorm2d(out_channels),
+            nn.Dropout(0.02),
+            nn.ReLU(inplace=True)
+        )
+        # Second convolution
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(out_channels, out_channels, 3, padding='same'),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, x):
         x = self.conv1(x)
-        x = self.cross_attention(x, query)
-        x = self.dropout(x)
         x = self.conv2(x)
-        return x, query
-
-class UNetWithCrossAttention(nn.Module):
-    def __init__(self, in_channels = 3, out_channels = 3, query_channels = 768):
-        super(UNetWithCrossAttention, self).__init__()
-        
-        self.decoderL1 = UNetLayerWithCA(3, 3, 12, query_channels)
-        self.decoderL2 = UNetLayerWithCA(3, 6, 24, query_channels)
-        self.decoderL3 = UNetLayerWithCA(6, 8, 48, query_channels)
-
-        self.encoderL1 = UNetLayerWithCA(8, 6, 48, query_channels)
-        self.encoderL2 = UNetLayerWithCA(6, 3, 24, query_channels)
-        self.encoderL3 = UNetLayerWithCA(3, 3, 12, query_channels)
-
-    def forward(self, x, query):
-        x, _ = self.decoderL1(x, query)
-        x, _ = self.decoderL2(x, query)
-        x, _ = self.decoderL3(x, query)
-
-        x, _ = self.encoderL1(x, query)
-        x, _ = self.encoderL2(x, query)
-        x, _ = self.encoderL3(x, query)
         return x
+
+"""
+    Down Convolutional Block
+
+    This is a down convolutional block. It is used in the UNet model. MaxPools.
+"""
+class DownBlock(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(DownBlock, self).__init__()
+        self.conv = ConvBlock(in_channels, out_channels)
+        self.maxpool = nn.MaxPool2d(2)
+
+    def forward(self, x, q):
+        x = self.conv(x)
+        p = self.maxpool(x)
+        return x, p
+
+"""
+    Up Convolutional Block
+    
+    This is an up convolutional block. It is used in the UNet model. Upsamples.
+"""
+class UpBlock(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(UpBlock, self).__init__()
+        self.up = nn.ConvTranspose2d(in_channels, out_channels, 2, stride=2)
+        # We need extra space for self attention TODO: Add cross attention!
+        self.conv = ConvBlock(out_channels + out_channels, out_channels)
+    
+    def forward(self, x1, x2):
+        x = self.up(x1)
+        x = torch.cat([x2, x], dim=1)
+        return self.conv(x)
+
+"""
+    UNet Module
+
+
+"""
