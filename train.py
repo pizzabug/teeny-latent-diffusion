@@ -14,8 +14,11 @@ from utils import RegularCheckpoint, train_save_checkpoint
 
 os.environ['CUDA_VISIBLE_DEVICES'] ='0'
 
+# hparams while i'm working on it
+img_dim = 512
+
 # data
-dataset = UnsplashLiteDataset(root_dir='/mnt/e/Source/unsplash-lite-corpus-preprocess/db')
+dataset = UnsplashLiteDataset(root_dir='/mnt/e/Source/unsplash-lite-corpus-preprocess/db', img_dim=img_dim)
 training_set, validation_set = torch.utils.data.random_split(dataset, [int(len(dataset)*0.8), int(len(dataset)*0.2)])
 
 train_loader = DataLoader(training_set, batch_size=1, collate_fn=dirty_collate)
@@ -23,19 +26,17 @@ val_loader = DataLoader(validation_set, batch_size=1, collate_fn=dirty_collate)
 
 
 # model
-model = CringeLDMModel().to("cuda:0" if torch.cuda.is_available() else "cpu")
+ldm_model = CringeLDMModel(latent_shapes=[16,32,64,128], img_dim=img_dim).to("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Logger
-logger = TensorBoardLogger("tb_logs", name="cringeldm")
+ldm_logger = TensorBoardLogger("tb_logs", name="cringeldm")
 
 
-trainer = pl.Trainer(accelerator='gpu', precision=16, limit_train_batches=0.5, callbacks=[RegularCheckpoint(model, 250),], logger=logger)
+ldm_trainer = pl.Trainer(accelerator='gpu', precision=16, limit_train_batches=0.5, callbacks=[RegularCheckpoint(ldm_model, 250, base_dir="checkpoints/ldm"),], logger=ldm_logger)
 while True:
-    try:
         # Load checkpoint if it exists 
-        if (os.path.exists("checkpoints/model.ckpt")):
-            trainer.fit(model, train_loader, val_loader, ckpt_path="checkpoints/model.ckpt")
+        if (os.path.exists("checkpoints/ldm/model.ckpt")):
+            ldm_trainer.fit(ldm_model, train_loader, val_loader, ckpt_path="checkpoints/ldm/model.ckpt")
         else:
-            trainer.fit(model, train_loader, val_loader)
-    except:
-        pass
+            ldm_trainer.fit(ldm_model, train_loader, val_loader)
+   

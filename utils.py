@@ -48,18 +48,18 @@ def import_image_from_path(path = "/mnt/e/Source/unsplash-lite-corpus-preprocess
     # Convert the image to Conv2d input
     img = convert_to_conv2d(img)
 
-def train_save_checkpoint (steps, trainer, model, checkpoint = False):
+def train_save_checkpoint (steps, trainer, model, checkpoint = False, base_dir = "checkpoints/ldm"):
     # Save the model
-    ckptPath = f"checkpoints/{steps}/model.ckpt"
-    trainer.save_checkpoint(f"{os.getcwd()}/checkpoints/model.ckpt")
+    ckptPath = f"{base_dir}/{steps}/model.ckpt"
+    trainer.save_checkpoint(f"{os.getcwd()}/{base_dir}/model.ckpt")
 
     if checkpoint:
         # Create a new directory for the checkpoint if it doesnt already exist
-        if not os.path.exists(f"{os.getcwd()}/checkpoints/{steps}"):
-            os.mkdir(f"{os.getcwd()}/checkpoints/{steps}")
+        if not os.path.exists(f"{os.getcwd()}/{base_dir}/{steps}"):
+            os.mkdir(f"{os.getcwd()}/{base_dir}/{steps}")
 
         # Copy the model to the new directory
-        os.system(f"cp {os.getcwd()}/checkpoints/model.ckpt {os.getcwd()}/{ckptPath}")
+        os.system(f"cp {os.getcwd()}/{base_dir}/model.ckpt {os.getcwd()}/{ckptPath}")
         
 
     # Then go save some outputs!
@@ -72,22 +72,22 @@ def train_save_checkpoint (steps, trainer, model, checkpoint = False):
     ]
 
     images_to_log = []
+    with torch.no_grad():
+        for caption in test_captions:
+            # Load the image
+            res = model.forward_with_q(query=caption);
+            images_to_log.append(res[0])
 
-    for caption in test_captions:
-        # Load the image
-        res = model.forward_with_q(query=caption);
-        images_to_log.append(res[0])
+            # Convert the image to RGB
+            res = convert_to_rgb(res)
 
-        # Convert the image to RGB
-        res = convert_to_rgb(res)
+            # Show the image
+            plt.imshow(res)
 
-        # Show the image
-        plt.imshow(res)
-
-        # Export the image
-        if checkpoint:
-            export_image_to_png(res, f"checkpoints/{steps}/sample {caption}.png")
-        export_image_to_png(res, f"checkpoints/sample {caption}.png")
+            # Export the image
+            if checkpoint:
+                export_image_to_png(res, f"{base_dir}/{steps}/sample {caption}.png")
+            export_image_to_png(res, f"{base_dir}/sample {caption}.png")
 
     
     grid = torchvision.utils.make_grid(images_to_log)
@@ -95,16 +95,17 @@ def train_save_checkpoint (steps, trainer, model, checkpoint = False):
 
 
 class RegularCheckpoint(ModelCheckpoint):
-    def __init__(self, model, period = 1000, dump = 50):
+    def __init__(self, model, period = 1000, dump = 50, base_dir = "checkpoints/ldm"):
         super().__init__()
         self.model = model
         self.period = period
         self.dump = dump
+        self.base_dir = base_dir
     
     def save_checkpoint(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", checkpoint) -> None:
         # Create a new directory for the checkpoint if it doesnt already exist
-        train_save_checkpoint(pl_module.global_step, trainer=trainer, model=self.model, checkpoint=checkpoint)
+        train_save_checkpoint(pl_module.global_step, trainer=trainer, model=self.model, checkpoint=checkpoint, base_dir=self.base_dir)
         
     def on_train_batch_end(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", 

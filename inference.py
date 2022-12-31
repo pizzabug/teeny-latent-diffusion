@@ -12,7 +12,7 @@ def load_model (model_dir=None):
     # Load the model
     model = CringeLDMModel()
     if model_dir is not None:
-        model.load_state_dict(torch.load("checkpoints/model.ckpt")['state_dict'])
+        model.load_state_dict(torch.load("checkpoints/ldm/model.ckpt")['state_dict'])
 
     if (torch.cuda.is_available()):
         model = model.cuda()

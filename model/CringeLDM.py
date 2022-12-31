@@ -14,7 +14,7 @@ from transformers import (
 from transformers.utils import ModelOutput
 from transformers.modeling_outputs import BaseModelOutput
 
-from model.cringe.old_unet import UNetWithCrossAttention
+from model.cringe.unet import UNet
 
 """
     BERT Wrapper
@@ -38,7 +38,8 @@ class CringeBERTWrapper:
             if torch.cuda.is_available():
                 input_ids = input_ids.cuda()
             output = self.bert_model(input_ids)
-            return output.last_hidden_state
+            q = output.last_hidden_state
+            return q.unsqueeze(0)
 
     def inference (self, query):
         with torch.no_grad():
@@ -69,9 +70,11 @@ class CringeBERTEncoder(pl.LightningModule):
     This is the definition of the LDM model.
 """
 class CringeLDMModel(pl.LightningModule):
-    def __init__(self, hparams = None):
+    def __init__(self, hparams = None, latent_shapes=[
+                32, 64, 128, 256
+            ], img_dim = 256):
         super().__init__()
-        self.inSize = 256
+        self.in_dimension = img_dim
         self.dropout = 0.02
 
         """
@@ -81,7 +84,8 @@ class CringeLDMModel(pl.LightningModule):
         """
         self.bertWrapper = CringeBERTWrapper()
         # Latent space
-        self.UNet = UNetWithCrossAttention(256,256,768)
+        self.UNet = UNet(dimensions=latent_shapes)
+
         # Image space decoder
         self.imageSpaceDecoder = nn.Sequential(
             nn.Conv2d(3, 6, 12, padding='same'),
@@ -104,7 +108,7 @@ class CringeLDMModel(pl.LightningModule):
         # Load the image
         if x is None:
             # Generate noise
-            x = torch.randn(q.shape[0], 3, 256, 256)
+            x = torch.randn(q.shape[0], 3, self.in_dimension, self.in_dimension)
         
         if torch.cuda.is_available():
             x = x.cuda()
@@ -126,7 +130,7 @@ class CringeLDMModel(pl.LightningModule):
         This is the optimizer for the model.
     """
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-5)
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-7)
         return optimizer
     
     """

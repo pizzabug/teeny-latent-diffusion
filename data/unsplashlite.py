@@ -12,9 +12,11 @@ from torchvision import transforms
 from model.CringeLDM import CringeBERTWrapper
 
 class UnsplashLiteDataset(Dataset):
-    def __init__(self, root_dir, transform=None):    
+    def __init__(self, root_dir, transform=None, img_dim=256):    
         self.image_paths = []
         self.image_captions = []
+
+        self.im_dimension = img_dim
 
         bertWrapper = CringeBERTWrapper()
 
@@ -51,14 +53,14 @@ class UnsplashLiteDataset(Dataset):
             return None, None
         else:
             image = Image.open(path)
-            image = image.resize((256, 256))
+            image = image.resize((self.im_dimension, self.im_dimension))
             image = np.array(image)
             image = image / 255.0
             image = image.transpose(2, 0, 1)
             image = torch.tensor(image, dtype=torch.float32)
             
-            if image.shape != (3, 256, 256):
-                print("Warning: image shape is not (3, 256, 256). Skipping")
+            if image.shape != (3, self.im_dimension, self.im_dimension):
+                print(f"Warning: image shape is not (3, {self.im_dimension}, {self.im_dimension}). Skipping")
                 print(image.shape)
                 return None, None
 
