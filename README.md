@@ -1,5 +1,7 @@
 # teeny-latent-diffusion
-A repository loosely implementing High-Resolution Image Synthesis with Latent Diffusion Models (2021) in PyTorch.
+A repository loosely implementing High-Resolution Image Synthesis with Latent Diffusion Models (2021) in PyTorch. Written for experiments surrounding permissive datasets and data augmentation.
+
+##
 
 ## Progress 🚧
 - [ ] Implement a Denoiser U-Net.
