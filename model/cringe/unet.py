@@ -49,16 +49,20 @@ class ConvBlock(nn.Module):
     This is a down convolutional block. It is used in the UNet model. MaxPools.
 """
 class DownBlock(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, has_cross_attention = True):
         super(DownBlock, self).__init__()
+        self.has_cross_attention = has_cross_attention
+
         self.conv = ConvBlock(in_channels, out_channels)
         self.maxpool = nn.MaxPool2d(2)
-        self.conditional = ConditionalEncoder(out_channels, out_channels)
+        if (self.has_cross_attention):
+            self.conditional = ConditionalEncoder(out_channels, out_channels)
 
     def forward(self, x, q):
         x = self.conv(x)
         # TODO: Actually concat q next time
-        x = self.conditional(x, q)
+        if (self.has_cross_attention):
+            x = self.conditional(x, q)
         p = self.maxpool(x)
         return x, p
 
@@ -68,17 +72,21 @@ class DownBlock(nn.Module):
     This is an up convolutional block. It is used in the UNet model. Upsamples.
 """
 class UpBlock(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, has_cross_attention = True):
         super(UpBlock, self).__init__()
+        self.has_cross_attention = has_cross_attention
+        
         self.up = nn.ConvTranspose2d(in_channels, out_channels, 2, stride=2)
-        self.conditional = ConditionalEncoder(out_channels, out_channels)
+        if (self.has_cross_attention):
+            self.conditional = ConditionalEncoder(out_channels, out_channels)
         # We need extra space for self attention and up conv TODO: Add cross attention!
         self.conv = ConvBlock(out_channels * 3, out_channels)
     
     def forward(self, x, p, q):
         x = self.up(x)
         # TODO: Actually concat q next time
-        x = self.conditional(x, q)
+        if (self.has_cross_attention):
+            x = self.conditional(x, q)
         x = torch.cat([p, x], dim=1)
         return self.conv(x)
 
@@ -125,7 +133,7 @@ class ConditionalEncoder (nn.Module):
 class UNet(nn.Module):
     def __init__(self, dimensions  = [
             32, 64, 128, 256
-        ], hparams = None):
+        ], hparams = None, has_cross_attention = True):
         super(UNet, self).__init__()
 
         self.dimensions = dimensions
@@ -135,19 +143,19 @@ class UNet(nn.Module):
         self.first_conv = ConvBlock(3, self.dimensions[0])
 
         # Encoder
-        self.down1 = DownBlock(self.dimensions[0], self.dimensions[1])
-        self.down2 = DownBlock(self.dimensions[1], self.dimensions[2])
-        self.down3 = DownBlock(self.dimensions[2], self.dimensions[3])
+        self.down1 = DownBlock(self.dimensions[0], self.dimensions[1], has_cross_attention=has_cross_attention)
+        self.down2 = DownBlock(self.dimensions[1], self.dimensions[2], has_cross_attention=has_cross_attention)
+        self.down3 = DownBlock(self.dimensions[2], self.dimensions[3], has_cross_attention=has_cross_attention)
 
         # Decoder
-        self.up1 = UpBlock(self.dimensions[3], self.dimensions[2])
-        self.up2 = UpBlock(self.dimensions[2], self.dimensions[1])
-        self.up3 = UpBlock(self.dimensions[1], self.dimensions[0])
+        self.up1 = UpBlock(self.dimensions[3], self.dimensions[2], has_cross_attention=has_cross_attention)
+        self.up2 = UpBlock(self.dimensions[2], self.dimensions[1], has_cross_attention=has_cross_attention)
+        self.up3 = UpBlock(self.dimensions[1], self.dimensions[0], has_cross_attention=has_cross_attention)
 
         # Final Convolution
         self.final_conv = ConvBlock(self.dimensions[0], 3)
 
-    def forward(self, x, q):
+    def forward(self, x, q = None):
         # First Convolution
         x = self.first_conv(x)
 

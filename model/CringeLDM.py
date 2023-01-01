@@ -15,6 +15,7 @@ from transformers.utils import ModelOutput
 from transformers.modeling_outputs import BaseModelOutput
 
 from model.cringe.unet import UNet
+from model.CringeVAE import CringeVAEModel
 
 """
     BERT Wrapper
@@ -65,17 +66,18 @@ class CringeBERTEncoder(pl.LightningModule):
         # Define additional layers
 
 """
-    LDM Model
+    Denoiser Model
 
-    This is the definition of the LDM model.
+    This is the definition of the LDM denoiser model.
 """
-class CringeLDMModel(pl.LightningModule):
-    def __init__(self, hparams = None, latent_shapes=[
+class CringeDenoiserModel(pl.LightningModule):
+    def __init__(self, hparams = None, vae_model = None, diffuser_shapes=[
                 32, 64, 128, 256
             ], img_dim = 256):
         super().__init__()
-        self.in_dimension = img_dim
+        self.img_dim = img_dim
         self.dropout = 0.02
+        self.vae_model : CringeVAEModel = vae_model
 
         """
             BERT Wrapper for the text encoding
@@ -83,14 +85,17 @@ class CringeLDMModel(pl.LightningModule):
             in the future
         """
         self.bertWrapper = CringeBERTWrapper()
-        # Latent space
-        self.UNet = UNet(dimensions=latent_shapes)
+
+        # Diffusion UNet
+        self.UNet = UNet(dimensions=diffuser_shapes, hparams=hparams, has_cross_attention=True)
 
         # Image space decoder
         self.imageSpaceDecoder = nn.Sequential(
             nn.Conv2d(3, 6, 12, padding='same'),
+            nn.BatchNorm2d(6),
             nn.ReLU(),
             nn.Conv2d(6, 3, 24, padding='same'),
+            nn.BatchNorm2d(3),
             nn.Dropout(self.dropout),
             nn.ReLU(),
             nn.Conv2d(3, 3, 12, padding='same'),
@@ -108,17 +113,20 @@ class CringeLDMModel(pl.LightningModule):
         # Load the image
         if x is None:
             # Generate noise
-            x = torch.randn(q.shape[0], 3, self.in_dimension, self.in_dimension)
+            x = torch.randn(q.shape[0], 3, self.img_dim, self.img_dim)
         
         if torch.cuda.is_available():
             x = x.cuda()
             q = q.cuda()
-
+        
+        # Put the image through the VAE
+        with torch.no_grad():
+            x = self.vae_model(x)
+        
         # We denoise for multiple steps
         for i in range(steps):
             # This is the latent space
             x = self.UNet(x, q)
-
             # Image space decoder
             x = self.imageSpaceDecoder(x)
 
@@ -130,7 +138,7 @@ class CringeLDMModel(pl.LightningModule):
         This is the optimizer for the model.
     """
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-7)
+        optimizer = torch.optim.Adam(self.parameters(), lr=5e-8)
         return optimizer
     
     """
@@ -152,8 +160,8 @@ class CringeLDMModel(pl.LightningModule):
         # Get q
         q = self.bertWrapper.model_output(q)
         # Forward pass
-        y_hat = self.forward(q)
-        loss = F.mse_loss(y_hat, y)
+        y_hat = self.forward(q, steps=1)
+        loss = F.l1_loss(y_hat, y)
         self.log('train_loss', loss)
 
         # Skip if resulting loss is NaN or Inf
@@ -178,7 +186,7 @@ class CringeLDMModel(pl.LightningModule):
         q = self.bertWrapper.model_output(q)
         # Forward pass
         y_hat = self(q)
-        loss = F.mse_loss(y_hat, y)
+        loss = F.l1_loss(y_hat, y)
         self.log('val_loss', loss)
         return loss
 
