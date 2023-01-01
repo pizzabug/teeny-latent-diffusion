@@ -22,13 +22,13 @@ from model.cringe.cross_attention import CrossAttention
 class ConvBlock(nn.Module):
     def __init__(self, in_channels, out_channels, hparams = None):
         super(ConvBlock, self).__init__()
-        self.dropout = 0.02
+        self.dropout = 0.001
 
         # First convolution
         self.conv1 = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, 3, padding='same'),
+            nn.Dropout(self.dropout),
             nn.BatchNorm2d(out_channels),
-            nn.Dropout(0.02),
             nn.ReLU(inplace=True)
         )
         # Second convolution

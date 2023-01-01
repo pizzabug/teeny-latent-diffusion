@@ -56,6 +56,11 @@ class UnsplashLiteDataset(Dataset):
             image = image.resize((self.im_dimension, self.im_dimension))
             image = np.array(image)
             image = image / 255.0
+            if image.shape != (self.im_dimension, self.im_dimension, 3):
+                print(f"Warning: image shape is not ({self.im_dimension}, {self.im_dimension}, 3). Skipping")
+                print(image.shape)
+                return None, None
+                
             image = image.transpose(2, 0, 1)
             image = torch.tensor(image, dtype=torch.float32)
             

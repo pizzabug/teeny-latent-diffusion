@@ -1,4 +1,5 @@
 import os
+import sys
 import pytorch_lightning as pl
 import torch
 import torch.utils.data
@@ -100,6 +101,19 @@ def train_vae():
             vae_trainer.fit(vae_model, train_loader, val_loader, ckpt_path="checkpoints/vae/model.ckpt")
         else:
             vae_trainer.fit(vae_model, train_loader, val_loader)
-        
+
+def train():
+    args = sys.argv[1:]
+    if len(args) == 0:
+        print("Please specify a model to train.")
+        return
+    else:
+        if args[0] == "denoiser":
+            train_denoiser()
+        elif args[0] == "vae":
+            train_vae()
+        else:
+            print("Invalid model specified.")
+
 if __name__ == '__main__':
     train_vae()
