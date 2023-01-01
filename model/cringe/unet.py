@@ -102,6 +102,9 @@ class ConditionalEncoder (nn.Module):
         self.conv = ConvBlock(in_channels*2, out_channels)
 
     def forward(self, x, q):
+        # Unsqueeze q since batch dim is on 1
+        q = q.squeeze(0).unsqueeze(1)
+
         # Crop q if it has more channels than x. Pad the channels if no.
         if q.shape[1] > x.shape[1]:
             q = q[:, :x.shape[1], :, :]

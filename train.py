@@ -59,8 +59,10 @@ def train_denoiser():
                 denoiser_trainer.fit(denoiser_model, train_loader, val_loader, ckpt_path="checkpoints/ldm/model.ckpt")
             else:
                 denoiser_trainer.fit(denoiser_model, train_loader, val_loader)
-        except:
-            print("Error, restarting...")
+        except Exception as e:
+            tb = sys.exc_info()[2]
+            print(e.with_traceback(tb))
+        
 
 def train_vae():
     # hparams while i'm working on it
@@ -86,7 +88,7 @@ def train_vae():
         callbacks=[
             RegularCheckpoint(
                 model=vae_model, 
-                period=250, 
+                period=5000, 
                 base_dir="checkpoints/vae", 
                 do_img=True, 
                 do_q=False
@@ -105,6 +107,7 @@ def train_vae():
 def train():
     args = sys.argv[1:]
     if len(args) == 0:
+        train_denoiser()
         print("Please specify a model to train.")
         return
     else:
@@ -116,4 +119,4 @@ def train():
             print("Invalid model specified.")
 
 if __name__ == '__main__':
-    train_vae()
+    train()

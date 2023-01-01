@@ -18,7 +18,7 @@ def convert_to_rgb(x):
     x = x.squeeze(0)
     x = x.permute(1, 2, 0)
     x = x.detach().to("cpu").numpy()
-    x = (x - x.min()) / (x.max() - x.min())
+    #x = (x - x.min()) / (x.max() - x.min())
     x = (x * 255).astype(np.uint8)
     return x
 
@@ -29,10 +29,10 @@ def export_image_to_png(x, path = "out.png"):
     img.save(path)
 
 # Convert RGB image to Conv2d input
-def convert_to_conv2d(x):
+def convert_to_tensor(x):
     x = x.astype(np.float32)
-    x = x / 255
-    x = (x - x.min()) / (x.max() - x.min())
+    x = x / 255.0
+    #x = (x - x.min()) / (x.max() - x.min())
     x = torch.from_numpy(x)
     x = x.permute(2, 0, 1)
     x = x.unsqueeze(0)
@@ -46,7 +46,7 @@ def import_image_from_path(path = "/mnt/e/Source/unsplash-lite-corpus-preprocess
     # Convert the image to numpy array
     img = np.array(img)
     # Convert the image to Conv2d input
-    img = convert_to_conv2d(img)
+    img = convert_to_tensor(img)
     return img
 
 def train_save_checkpoint (steps, trainer, model, checkpoint = False, base_dir = "checkpoints/ldm"):
@@ -62,7 +62,7 @@ def train_save_checkpoint (steps, trainer, model, checkpoint = False, base_dir =
         # Copy the model to the new directory
         os.system(f"cp {os.getcwd()}/{base_dir}/model.ckpt {os.getcwd()}/{ckptPath}")
         
-def train_save_image_with_q (steps, trainer, model, checkpoint = False, base_dir = "checkpoints/ldm"):
+def train_save_image_with_q_denoiser (steps, trainer, model, checkpoint = False, base_dir = "checkpoints/ldm"):
     # Then go save some outputs!
     test_captions = [
         "lady on a walk",
@@ -76,7 +76,7 @@ def train_save_image_with_q (steps, trainer, model, checkpoint = False, base_dir
     with torch.no_grad():
         for caption in test_captions:
             # Load the image
-            res = model.forward_with_q(query=caption);
+            res = model.forward_with_q(query=caption, steps=20);
             images_to_log.append(res[0])
 
             # Convert the image to RGB
@@ -149,7 +149,7 @@ class RegularCheckpoint(ModelCheckpoint):
         train_save_checkpoint(pl_module.global_step, trainer=trainer, model=self.model, checkpoint=checkpoint, base_dir=self.base_dir)
         # Save some samples!
         if self.do_q:
-            train_save_image_with_q(pl_module.global_step, trainer=trainer, model=self.model, checkpoint=checkpoint, base_dir=self.base_dir)
+            train_save_image_with_q_denoiser(pl_module.global_step, trainer=trainer, model=self.model, checkpoint=checkpoint, base_dir=self.base_dir)
         if self.do_img:
             train_save_image_with_img(pl_module.global_step, trainer=trainer, model=self.model, checkpoint=checkpoint, base_dir=self.base_dir)
 

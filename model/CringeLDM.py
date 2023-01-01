@@ -34,7 +34,7 @@ class CringeBERTWrapper:
         self.loadModel(cpu)
         pass
 
-    def model_output (self, input_ids : torch.Tensor) -> BaseModelOutput:
+    def model_output (self, input_ids : torch.Tensor):
         with torch.no_grad():
             if torch.cuda.is_available():
                 input_ids = input_ids.cuda()
@@ -138,7 +138,7 @@ class CringeDenoiserModel(pl.LightningModule):
         This is the optimizer for the model.
     """
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=5e-8)
+        optimizer = torch.optim.Adam(self.parameters(), lr=5e-5)
         return optimizer
     
     """
@@ -159,8 +159,10 @@ class CringeDenoiserModel(pl.LightningModule):
 
         # Get q
         q = self.bertWrapper.model_output(q)
+        # Generate x batch
+        x = torch.randn(y.shape[0], 3, self.img_dim, self.img_dim)
         # Forward pass
-        y_hat = self.forward(q, steps=1)
+        y_hat = self.forward(q=q, x=x, steps=1)
         loss = F.l1_loss(y_hat, y)
         self.log('train_loss', loss)
 

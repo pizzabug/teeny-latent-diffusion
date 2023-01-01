@@ -32,7 +32,7 @@ def inference(model, q=""):
     img = import_image_from_path()
 
     # Load the image
-    res = model.forward_with_q(query=q, x=img, steps=1);
+    res = model.forward_with_q(query=q, x=img, steps=50);
 
     # Convert the image to RGB
     res = convert_to_rgb(res)

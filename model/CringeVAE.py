@@ -31,7 +31,7 @@ class CringeVAEModel(pl.LightningModule):
         This is the optimizer for the model.
     """
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=5e-8)
+        optimizer = torch.optim.Adam(self.parameters(), lr=5e-6)
         return optimizer
 
     """

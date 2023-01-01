@@ -10,6 +10,7 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 
 from model.CringeLDM import CringeBERTWrapper
+from utils import *
 
 class UnsplashLiteDataset(Dataset):
     def __init__(self, root_dir, transform=None, img_dim=256):    
@@ -52,22 +53,20 @@ class UnsplashLiteDataset(Dataset):
         if (not os.path.exists(path)):
             return None, None
         else:
-            image = Image.open(path)
-            image = image.resize((self.im_dimension, self.im_dimension))
-            image = np.array(image)
-            image = image / 255.0
-            if image.shape != (self.im_dimension, self.im_dimension, 3):
+            x = Image.open(path)
+            x = x.resize((self.im_dimension, self.im_dimension))
+            x = np.array(x)
+            if x.shape != (self.im_dimension, self.im_dimension, 3):
                 print(f"Warning: image shape is not ({self.im_dimension}, {self.im_dimension}, 3). Skipping")
-                print(image.shape)
+                print(x.shape)
                 return None, None
-                
-            image = image.transpose(2, 0, 1)
-            image = torch.tensor(image, dtype=torch.float32)
-            
-            if image.shape != (3, self.im_dimension, self.im_dimension):
+
+            x = convert_to_tensor(x)
+            x = x.squeeze(0)
+            if x.shape != (3, self.im_dimension, self.im_dimension):
                 print(f"Warning: image shape is not (3, {self.im_dimension}, {self.im_dimension}). Skipping")
-                print(image.shape)
+                print(x.shape)
                 return None, None
 
         q = self.image_captions[idx]
-        return image, q
+        return x, q
