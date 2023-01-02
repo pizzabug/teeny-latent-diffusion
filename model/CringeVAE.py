@@ -9,10 +9,12 @@ from torch.utils.data import random_split
 
 from model.cringe.unet import UNet
 
-"""
-
-"""
 class CringeVAEModel(pl.LightningModule):
+    """
+        CringeVAEModel
+
+        This is the VAE model. This is used as a prior to the denoiser module.
+    """
     def __init__(self, dimensions  = [
             32, 64, 128, 256
         ], hparams = None, has_cross_attention = False, img_dim = 512):
@@ -25,19 +27,19 @@ class CringeVAEModel(pl.LightningModule):
         x = self.vae_module(x)
         return x
         
-    """
-        configure_optimizers
-
-        This is the optimizer for the model.
-    """
     def configure_optimizers(self):
+        """
+            configure_optimizers
+
+            This is the optimizer for the model.
+        """
         optimizer = torch.optim.Adam(self.parameters(), lr=5e-6)
         return optimizer
 
-    """
-        training_step
-    """
     def training_step(self, train_batch, batch_idx):
+        """
+            training_step
+        """
         # Grab batch
         y, _ = train_batch
 
@@ -60,10 +62,10 @@ class CringeVAEModel(pl.LightningModule):
 
         return loss
 
-    """
-        validation_step
-    """
     def validation_step(self, val_batch, batch_idx):
+        """
+            validation_step
+        """
         # Grab batch
         y, _ = val_batch
 

@@ -14,7 +14,7 @@ The following is a table of VAE reconstructions compared to ground truth, at 23,
 
 ### Roadmap 🗺️
 - [x] Implement a Denoiser U-Net.
-- [ ] Implement a VAE prior.
+- [x] Implement a VAE prior.
 - [ ] Implement a BERT encoder as the LDM's text encoder.
 - [ ] Create preprocessor and dataloader for Unsplash-25K.
 - [ ] Train LDM on Unsplash-25K dataset.

@@ -7,77 +7,86 @@ from torch import Tensor
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from torch.utils.data import random_split
-from transformers import (
-    BertModel,
-    BertTokenizer
-)
-from transformers.utils import ModelOutput
+from transformers.models.bert.modeling_bert import BertModel
+from transformers.models.bert.tokenization_bert import BertTokenizer
+from transformers.utils.generic import ModelOutput
 from transformers.modeling_outputs import BaseModelOutput
 
 from model.cringe.unet import UNet
 from model.CringeVAE import CringeVAEModel
 
-"""
-    BERT Wrapper
 
-    This is a wrapper for the BERT model. Ideally would be trained from the same
-    dataset as the LDM model, but for now we just use the pretrained BERT model.
-"""
 class CringeBERTWrapper:
-    def loadModel (self,cpu):
-        self.bert_model = transformers.BertModel.from_pretrained('bert-base-uncased')
+    """
+        BERT Wrapper
+
+        This is a wrapper for the BERT model. Ideally would be trained from the same
+        dataset as the LDM model, but for now we just use the pretrained BERT model.
+    """
+
+    def loadModel(self, cpu):
+        self.bert_model = BertModel.from_pretrained(
+            'bert-base-uncased')  # type: ignore
         if torch.cuda.is_available() & (not cpu):
-            self.bert_model = self.bert_model.cuda()
-        self.bert_tokenizer = transformers.BertTokenizer.from_pretrained('bert-base-uncased')
+            self.bert_model = self.bert_model.cuda()  # type: ignore
+        self.bert_tokenizer = BertTokenizer.from_pretrained(
+            'bert-base-uncased')  # type: ignore
 
     def __init__(self, cpu=False):
         self.loadModel(cpu)
         pass
 
-    def model_output (self, input_ids : torch.Tensor):
+    def model_output(self, input_ids: torch.Tensor):
         with torch.no_grad():
             if torch.cuda.is_available():
                 input_ids = input_ids.cuda()
-            output = self.bert_model(input_ids)
+            output = self.bert_model(input_ids)  # type: ignore
             q = output.last_hidden_state
             return q.unsqueeze(0)
 
-    def inference (self, query):
+    def inference(self, query):
         with torch.no_grad():
             # Encode the text using BERT
-            input_ids : Tensor = torch.tensor(self.bert_tokenizer.encode(query)).unsqueeze(0)  # Add batch dimension
+            input_ids: Tensor = torch.tensor(self.bert_tokenizer.encode(query)) \
+                .unsqueeze(0)  # Add batch dimension
             # Normalise so that all values are between 0 and 1
             input_ids = (input_ids + 1) / 2
             return self.model_output(input_ids)
 
-"""
-    BERT Model
 
-    This is the BERT model. It is used to encode the text.
-"""
 class CringeBERTEncoder(pl.LightningModule):
-    def __init__(self, hparams = None):
+
+    """
+        BERT Model
+
+        This is the BERT model. It is used to encode the text.
+    """
+
+    def __init__(self, hparams=None):
         super().__init__()
 
         # Initialise BERT model
         self.bert = BertModel.from_pretrained('bert-base-uncased')
-        self.bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+        self.bert_tokenizer = BertTokenizer.from_pretrained(
+            'bert-base-uncased')
 
         # Define additional layers
 
-"""
-    Denoiser Model
 
-    This is the definition of the LDM denoiser model.
-"""
 class CringeDenoiserModel(pl.LightningModule):
-    def __init__(self, hparams = None, vae_model = None, diffuser_shapes=[
-                32, 64, 128, 256
-            ], img_dim = 256):
+    """
+        Denoiser Model
+
+        This is the definition of the LDM denoiser model.
+    """
+
+    def __init__(self, hparams=None, vae_model: CringeVAEModel | None = None, diffuser_shapes=[
+        32, 64, 128, 256
+    ], img_dim=256):
         super().__init__()
         self.img_dim = img_dim
         self.dropout = 0.02
-        self.vae_model : CringeVAEModel = vae_model
+        self.vae_model: CringeVAEModel = vae_model  # type: ignore
 
         """
             BERT Wrapper for the text encoding
@@ -87,7 +96,11 @@ class CringeDenoiserModel(pl.LightningModule):
         self.bertWrapper = CringeBERTWrapper()
 
         # Diffusion UNet
-        self.UNet = UNet(dimensions=diffuser_shapes, hparams=hparams, has_cross_attention=True)
+        self.UNet = UNet(
+            dimensions=diffuser_shapes,
+            hparams=hparams,
+            has_cross_attention=True
+        )
 
         # Image space decoder
         self.imageSpaceDecoder = nn.Sequential(
@@ -101,28 +114,28 @@ class CringeDenoiserModel(pl.LightningModule):
             nn.Conv2d(3, 3, 12, padding='same'),
         )
 
-    """
-        forward
-        
-        self: The model
-        q: Query tensor from BERT
-        x: Image tensor
-        steps: Number of steps to denoise the image
-    """
-    def forward(self, q, x = None, steps = 20):        
+    def forward(self, q, x=None, steps=20):
+        """
+            forward
+
+            self: The model
+            q: Query tensor from BERT
+            x: Image tensor
+            steps: Number of steps to denoise the image
+        """
         # Load the image
         if x is None:
             # Generate noise
             x = torch.randn(q.shape[0], 3, self.img_dim, self.img_dim)
-        
+
         if torch.cuda.is_available():
             x = x.cuda()
             q = q.cuda()
-        
+
         # Put the image through the VAE
         with torch.no_grad():
             x = self.vae_model(x)
-        
+
         # We denoise for multiple steps
         for i in range(steps):
             # This is the latent space
@@ -132,19 +145,19 @@ class CringeDenoiserModel(pl.LightningModule):
 
         return x
 
-    """
-        configure_optimizers
-
-        This is the optimizer for the model.
-    """
     def configure_optimizers(self):
+        """
+            configure_optimizers
+
+            This is the optimizer for the model.
+        """
         optimizer = torch.optim.Adam(self.parameters(), lr=5e-5)
         return optimizer
-    
-    """
-        training_step
-    """
+
     def training_step(self, train_batch, batch_idx):
+        """
+            training_step
+        """
         # Grab batch
         y, q = train_batch
 
@@ -171,11 +184,11 @@ class CringeDenoiserModel(pl.LightningModule):
             return None
 
         return loss
-    
-    """
-        validation_step
-    """
+
     def validation_step(self, val_batch, batch_idx):
+        """
+            validation_step
+        """
         # Grab batch
         y, q = val_batch
 
@@ -192,11 +205,12 @@ class CringeDenoiserModel(pl.LightningModule):
         self.log('val_loss', loss)
         return loss
 
-    def forward_with_q (self, query, x = None, steps = 20):
-        
+    def forward_with_q(self, query, x=None, steps=20):
+
         # Get the BERT output
-        q = torch.tensor(self.bertWrapper.bert_tokenizer.encode(query)).unsqueeze(0)
-        
+        q = torch.tensor(
+            self.bertWrapper.bert_tokenizer.encode(query)).unsqueeze(0)
+
         if torch.cuda.is_available():
             q = q.cuda()
 
