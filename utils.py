@@ -5,7 +5,7 @@ import pytorch_lightning as pl
 import torch
 import torchvision
 
-from model.CringeLDM import CringeDenoiserModel
+from model.CringeDenoiser import CringeDenoiserModel
 from PIL import Image
 from pytorch_lightning.callbacks import ModelCheckpoint
 

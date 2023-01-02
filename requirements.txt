@@ -2,6 +2,7 @@ torch
 torchvision 
 torchaudio
 pytorch_lightning
+lightning-transformers
 transformers
 numpy
 matplotlib

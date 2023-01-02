@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 
 from data.dirtycollate import dirty_collate
 
-from model.CringeLDM import CringeDenoiserModel
+from model.CringeDenoiser import CringeDenoiserModel
 from model.CringeVAE import CringeVAEModel
 from data.unsplashlite import UnsplashLiteDataset
 from utils import RegularCheckpoint, train_save_checkpoint

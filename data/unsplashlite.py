@@ -9,7 +9,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-from model.CringeLDM import CringeBERTWrapper
+from model.CringeBERT import CringeBERTWrapper
 from utils import *
 
 class UnsplashLiteDataset(Dataset):
