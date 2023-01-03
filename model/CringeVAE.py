@@ -9,6 +9,7 @@ from torch.utils.data import random_split
 
 from model.cringe.unet import UNet
 
+
 class CringeVAEModel(pl.LightningModule):
     """
         CringeVAEModel

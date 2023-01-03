@@ -11,8 +11,8 @@ from transformers.models.bert.tokenization_bert import BertTokenizer
 from transformers.utils.generic import ModelOutput
 from transformers.modeling_outputs import BaseModelOutput
 
-
 from model.cringe.unet import UNet
+
 
 class CringeBERTWrapper:
     """

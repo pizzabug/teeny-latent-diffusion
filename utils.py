@@ -144,7 +144,7 @@ def train_save_image_with_img(steps, trainer, model, checkpoint=False, base_dir=
 
 
 class RegularCheckpoint(ModelCheckpoint):
-    def __init__(self, model, period=1000, dump=50, base_dir="checkpoints/ldm", do_q=True, do_img=False):
+    def __init__(self, model, period=1000, dump=5, base_dir="checkpoints/ldm", do_q=True, do_img=False):
         super().__init__()
         self.model = model
         self.period = period

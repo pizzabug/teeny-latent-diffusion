@@ -10,24 +10,6 @@ from model.cringe.unet import UNet
 from model.CringeBERT import CringeBERTWrapper
 from model.CringeVAE import CringeVAEModel
 
-class CringeBERTEncoder(pl.LightningModule):
-
-    """
-        BERT Model
-
-        This is the BERT model. It is used to encode the text.
-    """
-
-    def __init__(self, hparams=None):
-        super().__init__()
-
-        # Initialise BERT model
-        self.bert = BertModel.from_pretrained('bert-base-uncased')
-        self.bert_tokenizer = BertTokenizer.from_pretrained(
-            'bert-base-uncased')
-
-        # Define additional layers
-
 
 class CringeDenoiserModel(pl.LightningModule):
     """
@@ -79,14 +61,16 @@ class CringeDenoiserModel(pl.LightningModule):
             x: Image tensor
             steps: Number of steps to denoise the image
         """
+
+        if torch.cuda.is_available():
+            # x = x.cuda()
+            q = q.cuda()
+
         # Load the image
         if x is None:
             # Generate noise
             x = torch.randn(q.shape[0], 3, self.img_dim, self.img_dim)
-
-        if torch.cuda.is_available():
-            x = x.cuda()
-            q = q.cuda()
+            x = x.to(q)
 
         # Put the image through the VAE
         with torch.no_grad():
@@ -123,13 +107,15 @@ class CringeDenoiserModel(pl.LightningModule):
 
         # Cuda up if needed
         if torch.cuda.is_available():
-            y = y.cuda()
+            # y = y.cuda()
             q = q.cuda()
 
         # Get q
         q = self.bertWrapper.model_output(q)
         # Generate x batch
         x = torch.randn(y.shape[0], 3, self.img_dim, self.img_dim)
+        x = x.to(y)
+
         # Forward pass
         y_hat = self.forward(q=q, x=x, steps=1)
         loss = F.l1_loss(y_hat, y)
@@ -150,7 +136,7 @@ class CringeDenoiserModel(pl.LightningModule):
 
         # Cuda up if needed
         if torch.cuda.is_available():
-            y = y.cuda()
+            # y = y.cuda()
             q = q.cuda()
 
         # Get q
@@ -161,7 +147,7 @@ class CringeDenoiserModel(pl.LightningModule):
         self.log('val_loss', loss)
         return loss
 
-    def forward_with_q(self, query, x=None, steps=20):
+    def forward_with_q(self, query, x=None, steps=1):
 
         # Get the BERT output
         q = torch.tensor(

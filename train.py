@@ -45,25 +45,25 @@ def train_denoiser():
         callbacks=[
             RegularCheckpoint(
                 model=denoiser_model, 
-                period=250, 
+                period=50, 
                 base_dir="checkpoints/ldm",
                 do_q=True,
                 do_img=False,
             ),
         ], 
+        # accumulate_grad_batches=16,
         logger=denoiser_logger)
     while True:
-        try:
+        # try:
             # Load checkpoint if it exists 
             if (os.path.exists("checkpoints/ldm/model.ckpt")):
                 denoiser_trainer.fit(denoiser_model, train_loader, val_loader, ckpt_path="checkpoints/ldm/model.ckpt")
             else:
                 denoiser_trainer.fit(denoiser_model, train_loader, val_loader)
-        except Exception as e:
-            tb = sys.exc_info()[2]
-            print(e.with_traceback(tb))
+        # except Exception as e:
+        #     tb = sys.exc_info()[2]
+        #     print(e.with_traceback(tb))
         
-
 def train_vae():
     # hparams while i'm working on it
     img_dim = 512
