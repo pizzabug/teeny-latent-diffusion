@@ -24,8 +24,8 @@ def train_denoiser():
     dataset = UnsplashLiteDataset(root_dir='/mnt/e/Source/unsplash-lite-corpus-preprocess/db', img_dim=img_dim)
     training_set, validation_set = torch.utils.data.random_split(dataset, [int(len(dataset)*0.8), int(len(dataset)*0.2)])
 
-    train_loader = DataLoader(training_set, batch_size=1, collate_fn=dirty_collate)
-    val_loader = DataLoader(validation_set, batch_size=1, collate_fn=dirty_collate)
+    train_loader = DataLoader(training_set, batch_size=10, collate_fn=dirty_collate)
+    val_loader = DataLoader(validation_set, batch_size=10, collate_fn=dirty_collate)
 
     # Load checkpoint if it exists 
     vae_model = CringeVAEModel(dimensions=[16,32,64,128]).to("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -33,7 +33,7 @@ def train_denoiser():
         vae_model.load_state_dict(torch.load("checkpoints/vae/model.ckpt")["state_dict"])
     
     # Load checkpoint if it exists 
-    denoiser_model = CringeDenoiserModel(vae_model=vae_model, diffuser_shapes=[16,32,64,128], img_dim=img_dim).to("cuda:0" if torch.cuda.is_available() else "cpu")
+    denoiser_model = CringeDenoiserModel(vae_model=vae_model, diffuser_shapes=[32,64,128,256], img_dim=img_dim).to("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # Logger
     denoiser_logger = TensorBoardLogger("tb_logs", name="cringeldm")
@@ -45,24 +45,24 @@ def train_denoiser():
         callbacks=[
             RegularCheckpoint(
                 model=denoiser_model, 
-                period=50, 
+                period=10, 
                 base_dir="checkpoints/ldm",
                 do_q=True,
                 do_img=False,
             ),
         ], 
-        # accumulate_grad_batches=16,
+        accumulate_grad_batches=10,
         logger=denoiser_logger)
     while True:
-        # try:
+        try:
             # Load checkpoint if it exists 
             if (os.path.exists("checkpoints/ldm/model.ckpt")):
                 denoiser_trainer.fit(denoiser_model, train_loader, val_loader, ckpt_path="checkpoints/ldm/model.ckpt")
             else:
                 denoiser_trainer.fit(denoiser_model, train_loader, val_loader)
-        # except Exception as e:
-        #     tb = sys.exc_info()[2]
-        #     print(e.with_traceback(tb))
+        except Exception as e:
+            tb = sys.exc_info()[2]
+            print(e.with_traceback(tb))
         
 def train_vae():
     # hparams while i'm working on it

@@ -5,17 +5,11 @@ import pytorch_lightning as pl
 import torch
 import torchvision
 
-from model.CringeDenoiser import CringeDenoiserModel
 from PIL import Image
 from pytorch_lightning.callbacks import ModelCheckpoint
 
-# Inference of UNET model
-# Path: inference.py
-# Compare this snippet from model/modules/UNetWithCrossAttention.py:
 
 # Convert Conv2d output to RGB image
-
-
 def convert_to_rgb(x):
     x = x.squeeze(0)
     x = x.permute(1, 2, 0)
@@ -24,17 +18,13 @@ def convert_to_rgb(x):
     x = (x * 255).astype(np.uint8)
     return x
 
-# Exprt RGB image to PNG
-
-
+# Export RGB image to PNG
 def export_image_to_png(x, path="out.png"):
     # Export the image to PNG
     img = Image.fromarray(x, 'RGB')
     img.save(path)
 
 # Convert RGB image to Conv2d input
-
-
 def convert_to_tensor(x):
     x = x.astype(np.float32)
     x = x / 255.0
@@ -42,6 +32,12 @@ def convert_to_tensor(x):
     x = torch.from_numpy(x)
     x = x.permute(2, 0, 1)
     x = x.unsqueeze(0)
+    return x
+
+# Add noise to a tensor :3
+def add_noise(x, noise_factor=0.5):
+    x = x + noise_factor * torch.randn_like(x)
+    x = torch.clamp(x, 0., 1.)
     return x
 
 
@@ -75,11 +71,11 @@ def train_save_checkpoint(steps, trainer, model, checkpoint=False, base_dir="che
 def train_save_image_with_q_denoiser(steps, trainer, model, checkpoint=False, base_dir="checkpoints/ldm"):
     # Then go save some outputs!
     test_captions = [
-        "lady on a walk",
-        "dog sitting",
-        "the sea",
-        "mountains",
-        "houses"
+        "Woman exploring a forest",
+        "Succulents in a terrarium",
+        "Rural winter mountainside",
+        "Poppy seeds and flowers",
+        "Silhouette near dark trees"
     ]
 
     images_to_log = []
@@ -169,6 +165,6 @@ class RegularCheckpoint(ModelCheckpoint):
     def on_train_batch_end(
             self, trainer: "pl.Trainer", pl_module: "pl.LightningModule",
             *args, **kwargs) -> None:
-        if trainer.global_step % self.dump == 0:
+        if pl_module.global_step % self.dump == 0:
             self.save_checkpoint(trainer, pl_module,
                                  (trainer.global_step % self.period == 0))

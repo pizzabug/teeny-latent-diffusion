@@ -9,6 +9,7 @@ from transformers.models.bert.tokenization_bert import BertTokenizer
 from model.cringe.unet import UNet
 from model.CringeBERT import CringeBERTWrapper
 from model.CringeVAE import CringeVAEModel
+from utils import add_noise
 
 
 class CringeDenoiserModel(pl.LightningModule):
@@ -68,8 +69,8 @@ class CringeDenoiserModel(pl.LightningModule):
 
         # Load the image
         if x is None:
-            # Generate noise
-            x = torch.randn(q.shape[0], 3, self.img_dim, self.img_dim)
+            # Generate noise; q's batch dimension is at 1th element
+            x = torch.randn(q.shape[1], 3, self.img_dim, self.img_dim)
             x = x.to(q)
 
         # Put the image through the VAE
@@ -112,9 +113,11 @@ class CringeDenoiserModel(pl.LightningModule):
 
         # Get q
         q = self.bertWrapper.model_output(q)
-        # Generate x batch
-        x = torch.randn(y.shape[0], 3, self.img_dim, self.img_dim)
-        x = x.to(y)
+        # Generate x batch, which is a slightly noisier version of y
+        x = add_noise(y)
+        
+        #x = torch.randn(y.shape[0], 3, self.img_dim, self.img_dim)
+        #x = x.to(y)
 
         # Forward pass
         y_hat = self.forward(q=q, x=x, steps=1)
