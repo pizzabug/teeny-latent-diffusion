@@ -3,13 +3,11 @@ import torch
 import torch.nn as nn
 
 from torch.nn import functional as F
-from transformers.models.bert.modeling_bert import BertModel
-from transformers.models.bert.tokenization_bert import BertTokenizer
 
-from model.cringe.unet import UNet
+from utils import add_noise
 from model.CringeBERT import CringeBERTWrapper
 from model.CringeVAE import CringeVAEModel
-from utils import add_noise
+from model.unet.unet import UNet
 
 
 class CringeDenoiserModel(pl.LightningModule):
@@ -63,9 +61,9 @@ class CringeDenoiserModel(pl.LightningModule):
             steps: Number of steps to denoise the image
         """
 
-        if torch.cuda.is_available():
+        # if torch.cuda.is_available():
             # x = x.cuda()
-            q = q.cuda()
+            # q = q.cuda()
 
         # Load the image
         if x is None:
@@ -107,9 +105,9 @@ class CringeDenoiserModel(pl.LightningModule):
             return None
 
         # Cuda up if needed
-        if torch.cuda.is_available():
+        # if torch.cuda.is_available():
             # y = y.cuda()
-            q = q.cuda()
+            # q = q.cuda()
 
         # Get q
         q = self.bertWrapper.model_output(q)
@@ -138,9 +136,9 @@ class CringeDenoiserModel(pl.LightningModule):
         y, q = val_batch
 
         # Cuda up if needed
-        if torch.cuda.is_available():
+        # if torch.cuda.is_available():
             # y = y.cuda()
-            q = q.cuda()
+            # q = q.cuda()
 
         # Get q
         q = self.bertWrapper.model_output(q)
@@ -156,8 +154,8 @@ class CringeDenoiserModel(pl.LightningModule):
         q = torch.tensor(
             self.bertWrapper.bert_tokenizer.encode(query)).unsqueeze(0)
 
-        if torch.cuda.is_available():
-            q = q.cuda()
+        # if torch.cuda.is_available():
+            # q = q.cuda()
 
         q = self.bertWrapper.model_output(q)
 

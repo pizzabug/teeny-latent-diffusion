@@ -1,18 +1,7 @@
-import pytorch_lightning as pl
 import torch
 import torch.nn as nn
-import transformers
 
-from torch import Tensor
 from torch.nn import functional as F
-from torch.utils.data import DataLoader
-from torch.utils.data import random_split
-from transformers import (
-    BertModel,
-    BertTokenizer
-)
-
-from model.cringe.cross_attention import CrossAttention
 
 
 class ConvBlock(nn.Module):
