@@ -7,7 +7,7 @@ from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from torch.utils.data import random_split
 
-from model.cringe.unet import UNet
+from model.unet.unet import UNet
 
 
 class CringeCLIPModel(pl.LightningDataModule):

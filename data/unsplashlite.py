@@ -9,7 +9,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-from model.CringeBERT import CringeBERTWrapper
+from model.OldCringeBERT import OldCringeBERTWrapper
 from utils import *
 
 class UnsplashLiteDataset(Dataset):
@@ -19,7 +19,7 @@ class UnsplashLiteDataset(Dataset):
 
         self.im_dimension = img_dim
 
-        bertWrapper = CringeBERTWrapper()
+        bertWrapper = OldCringeBERTWrapper()
 
         # Get max length
         self.text_max = 512

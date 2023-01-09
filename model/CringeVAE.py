@@ -44,10 +44,6 @@ class CringeVAEModel(pl.LightningModule):
         if y is None:
             return None
 
-        # Cuda up if needed
-        if torch.cuda.is_available():
-            y = y.cuda()
-
         # Forward pass
         y_hat = self.forward(y)
         loss = F.l1_loss(y_hat, y)
@@ -65,10 +61,6 @@ class CringeVAEModel(pl.LightningModule):
         """
         # Grab batch
         y, _ = val_batch
-
-        # Cuda up if needed
-        if torch.cuda.is_available():
-            y = y.cuda()
 
         # Forward pass
         y_hat = self.forward(y)

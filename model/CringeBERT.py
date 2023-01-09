@@ -1,44 +1,69 @@
 import pytorch_lightning as pl
 import torch
 
-from torch import Tensor
-from transformers.models.bert.modeling_bert import BertModel
-from transformers.models.bert.tokenization_bert import BertTokenizer
+from torch.nn import functional as F
+
+from model.unet.unet import UNet
 
 
-class CringeBERTWrapper:
+class CringeBERTModel(pl.LightningModule):
     """
-        BERT Wrapper
+        CringeBERTModel
 
-        This is a wrapper for the BERT model. Ideally would be trained from the same
-        dataset as the LDM model, but for now we just use the pretrained BERT model.
+        This is the VAE model. This is used as a prior to the denoiser module.
     """
+    def __init__(self, dimensions  = [
+            32, 64, 128, 256
+        ], hparams = None, has_cross_attention = False, img_dim = 512):
+        super().__init__()
 
-    def loadModel(self, cpu):
-        self.bert_model = BertModel.from_pretrained(
-            'bert-base-uncased')  # type: ignore
-        if torch.cuda.is_available() & (not cpu):
-            self.bert_model = self.bert_model.cuda()  # type: ignore
-        self.bert_tokenizer = BertTokenizer.from_pretrained(
-            'bert-base-uncased')  # type: ignore
+        self.img_dim = img_dim
+        self.vae_module = UNet(dimensions=dimensions, hparams=hparams, has_cross_attention=has_cross_attention)
 
-    def __init__(self, cpu=False):
-        self.loadModel(cpu)
-        pass
+    def forward(self, x):
+        x = self.vae_module(x)
+        return x
+        
+    def configure_optimizers(self):
+        """
+            configure_optimizers
 
-    def model_output(self, input_ids: torch.Tensor):
-        with torch.no_grad():
-            if torch.cuda.is_available():
-                input_ids = input_ids.cuda()
-            output = self.bert_model(input_ids)  # type: ignore
-            q = output.last_hidden_state
-            return q.unsqueeze(0)
+            This is the optimizer for the model.
+        """
+        optimizer = torch.optim.Adam(self.parameters(), lr=5e-6)
+        return optimizer
 
-    def inference(self, query):
-        with torch.no_grad():
-            # Encode the text using BERT
-            input_ids: Tensor = torch.tensor(self.bert_tokenizer.encode(query)) \
-                .unsqueeze(0)  # Add batch dimension
-            # Normalise so that all values are between 0 and 1
-            input_ids = (input_ids + 1) / 2
-            return self.model_output(input_ids)
+    def training_step(self, train_batch, batch_idx):
+        """
+            training_step
+        """
+        # Grab batch
+        y, _ = train_batch
+
+        # Skip if image is None
+        if y is None:
+            return None
+
+        # Forward pass
+        y_hat = self.forward(y)
+        loss = F.l1_loss(y_hat, y)
+        self.log('train_loss', loss)
+
+        # Skip if resulting loss is NaN or Inf
+        if torch.isnan(loss) or torch.isinf(loss):
+            return None
+
+        return loss
+
+    def validation_step(self, val_batch, batch_idx):
+        """
+            validation_step
+        """
+        # Grab batch
+        y, _ = val_batch
+
+        # Forward pass
+        y_hat = self.forward(y)
+        loss = F.l1_loss(y_hat, y)
+        self.log('val_loss', loss)
+        return loss

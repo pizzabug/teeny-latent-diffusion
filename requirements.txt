@@ -1,8 +1,9 @@
+lightning-transformers
+matplotlib
+numpy
+open_clip_torch
+pytorch_lightning
 torch 
 torchvision 
 torchaudio
-pytorch_lightning
-lightning-transformers
 transformers
-numpy
-matplotlib

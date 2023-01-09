@@ -5,7 +5,7 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 from utils import add_noise
-from model.CringeBERT import CringeBERTWrapper
+from model.OldCringeBERT import OldCringeBERTWrapper
 from model.CringeVAE import CringeVAEModel
 from model.unet.unet import UNet
 
@@ -30,7 +30,7 @@ class CringeDenoiserModel(pl.LightningModule):
             This should be an integrated part of the model
             in the future
         """
-        self.bertWrapper = CringeBERTWrapper()
+        self.bertWrapper = OldCringeBERTWrapper()
 
         # Diffusion UNet
         self.UNet = UNet(
@@ -159,10 +159,10 @@ class CringeDenoiserModel(pl.LightningModule):
 
         q = self.bertWrapper.model_output(q)
 
-        if torch.cuda.is_available():
-            q = q.cuda()
-            if (x != None):
-                x = x.cuda()
+        # if torch.cuda.is_available():
+        #     q = q.cuda()
+        #     if (x != None):
+        #         x = x.cuda()
 
         # Forward pass
         return self.forward(q, x, steps)
