@@ -1,4 +1,3 @@
-lightning-transformers
 matplotlib
 numpy
 open_clip_torch
