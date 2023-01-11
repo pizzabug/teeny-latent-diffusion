@@ -19,7 +19,7 @@ def train_denoiser():
     img_dim = 512
 
     # data
-    dataset = UnsplashLiteDataset(root_dir='/Users/huey/ldm/unsplash-lite-corpus-preprocess/db', img_dim=img_dim)
+    dataset = UnsplashLiteDataset(root_dir='/mnt/e/Source/unsplash-lite-corpus-preprocess/db', img_dim=img_dim)
     training_set, validation_set = torch.utils.data.random_split(dataset, [int(len(dataset)*0.8), len(dataset) - int(len(dataset)*0.8)])
 
     train_loader = DataLoader(training_set, batch_size=2, collate_fn=dirty_collate)
