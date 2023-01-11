@@ -14,18 +14,16 @@ from model.CringeDenoiser import CringeDenoiserModel
 from model.CringeVAE import CringeVAEModel
 from utils import RegularCheckpoint, train_save_checkpoint
 
-os.environ['CUDA_VISIBLE_DEVICES'] ='0'
-
 def train_denoiser():
     # hparams while i'm working on it
     img_dim = 512
 
     # data
-    dataset = UnsplashLiteDataset(root_dir='/mnt/e/Source/unsplash-lite-corpus-preprocess/db', img_dim=img_dim)
-    training_set, validation_set = torch.utils.data.random_split(dataset, [int(len(dataset)*0.8), int(len(dataset)*0.2)])
+    dataset = UnsplashLiteDataset(root_dir='/Users/huey/ldm/unsplash-lite-corpus-preprocess/db', img_dim=img_dim)
+    training_set, validation_set = torch.utils.data.random_split(dataset, [int(len(dataset)*0.8), len(dataset) - int(len(dataset)*0.8)])
 
-    train_loader = DataLoader(training_set, batch_size=1, collate_fn=dirty_collate)
-    val_loader = DataLoader(validation_set, batch_size=1, collate_fn=dirty_collate)
+    train_loader = DataLoader(training_set, batch_size=2, collate_fn=dirty_collate)
+    val_loader = DataLoader(validation_set, batch_size=2, collate_fn=dirty_collate)
 
     # Load CLIP checkpoint if it exists
     clip_model = CringeCLIPModel() #.to("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -60,7 +58,7 @@ def train_denoiser():
                 do_img=False,
             ),
         ], 
-        accumulate_grad_batches=10,
+        accumulate_grad_batches=2,
         logger=denoiser_logger)
     while True:
         #try:

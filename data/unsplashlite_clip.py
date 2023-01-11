@@ -31,8 +31,7 @@ class UnsplashLiteDataset(Dataset):
             for row in reader:
                 image_path = root_dir + '/' + row[0]
                 image_caption = row[1]
-                image_caption = clip_model.tokenizer(image_caption)
-                image_caption = image_caption.squeeze(0)
+                image_caption = '{:512.512}'.format(image_caption)
 
                 self.image_paths.append(image_path)
                 self.image_captions.append(image_caption)
@@ -64,4 +63,5 @@ class UnsplashLiteDataset(Dataset):
                 return None, None
 
         q = self.image_captions[idx]
+        
         return x, q

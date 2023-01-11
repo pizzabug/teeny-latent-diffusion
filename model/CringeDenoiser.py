@@ -102,20 +102,12 @@ class CringeDenoiserModel(pl.LightningModule):
         # if torch.cuda.is_available():
             # y = y.cuda()
             # q = q.cuda()
-
-        # Get q
-        with torch.no_grad():
-            if q is not None:
-                q = self.clip_model.forward(text=q)
-            else:
-                # Preprocess image and send it through clip. Right now a bit hard, so TODO.
-                return None
         
         # Generate x batch, which is a slightly noisier version of y
         x = add_noise(y)
 
         # Forward pass
-        y_hat = self.forward(q=q, x=x, steps=1)
+        y_hat = self.forward_with_q(query=q, x=x, steps=1)
         loss = F.l1_loss(y_hat, y)
         self.log('train_loss', loss)
 
@@ -136,17 +128,12 @@ class CringeDenoiserModel(pl.LightningModule):
         # if torch.cuda.is_available():
             # y = y.cuda()
             # q = q.cuda()
-
-        # Get q
-        with torch.no_grad():
-            if q is not None:
-                q = self.clip_model.forward(text=q)
-            else:
-                # Preprocess image and send it through clip. Right now a bit hard, so TODO.
-                return None
         
+        # Generate x batch, which is a slightly noisier version of y
+        x = add_noise(y)
+
         # Forward pass
-        y_hat = self(q)
+        y_hat = self.forward_with_q(q, x=x, steps=1)
         loss = F.l1_loss(y_hat, y)
         self.log('val_loss', loss)
         return loss
@@ -155,10 +142,7 @@ class CringeDenoiserModel(pl.LightningModule):
 
         # Get the BERT output
         q = torch.tensor(
-            self.clip_model.tokenizer([query,])).unsqueeze(0)
-
-        # if torch.cuda.is_available():
-            # q = q.cuda()
+            self.clip_model.tokenizer(query)).to(self.device)
 
         # Get q
         with torch.no_grad():
@@ -168,11 +152,5 @@ class CringeDenoiserModel(pl.LightningModule):
                 # Preprocess image and send it through clip. Right now a bit hard, so TODO.
                 return None
         
-
-        # if torch.cuda.is_available():
-        #     q = q.cuda()
-        #     if (x != None):
-        #         x = x.cuda()
-
         # Forward pass
         return self.forward(q, x, steps)

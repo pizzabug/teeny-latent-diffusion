@@ -23,11 +23,13 @@ class CringeCLIPModel(pl.LightningModule):
         
         elif image is not None:
             x = self.clip_module.encode_image(image) # type: ignore
+            x = x.to(self.device)
             x /= x.norm(dim=-1, keepdim=True)
             return x
 
         elif text is not None:
             x = self.clip_module.encode_text(text) # type: ignore
+            x = x.to(self.device)
             x /= x.norm(dim=-1, keepdim=True)
             return x
 

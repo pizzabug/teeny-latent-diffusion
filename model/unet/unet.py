@@ -94,13 +94,13 @@ class ConditionalEncoder (nn.Module):
         TODO: Currently a lil hacky embed 
     """
 
-    def __init__(self, in_channels, out_channels, query_channels=512):
+    def __init__(self, in_channels, out_channels, query_channels=1024):
         super(ConditionalEncoder, self).__init__()
-        self.conv = ConvBlock(in_channels*2, out_channels)
+        self.conv = ConvBlock(in_channels * 2, out_channels)
 
     def forward(self, x, q):
         # Unsqueeze q since batch dim is on 1 in q, and 0 on x
-        q = q.squeeze(0).unsqueeze(1)
+        q = q.unsqueeze(1).unsqueeze(3)
 
         # Crop q if it has more channels than x. Pad the channels if no.
         if q.shape[1] > x.shape[1]:
@@ -110,16 +110,17 @@ class ConditionalEncoder (nn.Module):
 
         # Crop q if its shape is larger than x, pad with zeroes if smaller
         if q.shape[2] > x.shape[2]:
-            q = q[:, :, :x.shape[2], :x.shape[3]]
+            q = q[:, :, :x.shape[2], :]
         elif q.shape[2] < x.shape[2]:
-            q = F.pad(q, (0, x.shape[3] - q.shape[3], 0,
-                      x.shape[2] - q.shape[2]), "constant", 0)
+            q = F.pad(q, (0, 0, 0, x.shape[2] - q.shape[2], 0,0))
 
         # Crop q if its shape is larger than x, pad with zeroes if smaller
         if q.shape[3] > x.shape[3]:
             q = q[:, :, :, :x.shape[3]]
         elif q.shape[3] < x.shape[3]:
-            q = F.pad(q, (0, x.shape[3] - q.shape[3], 0, 0), "constant", 0)
+            q = q.squeeze(3)
+            q = torch.diag_embed(q, dim1=2, dim2=3)
+            #q = F.pad(q, (0, x.shape[3] - q.shape[3], 0, 0,0,0), "constant", 0)
 
         # Cat x and q
         nx = torch.cat([x, q], dim=1)
