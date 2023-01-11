@@ -136,7 +136,7 @@ class UNet(nn.Module):
 
     def __init__(self, dimensions=[
         32, 64, 128, 256
-    ], hparams=None, has_cross_attention=True):
+    ], hparams=None, has_cross_attention=True, query_channels=1024):
         super(UNet, self).__init__()
 
         self.dimensions = dimensions

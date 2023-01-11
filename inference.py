@@ -3,7 +3,7 @@ import numpy as np
 import pytorch_lightning as pl
 import torch
 
-from model.CringeDenoiser import CringeDenoiserModel
+from model.CringeDenoiserBert import CringeDenoiserModel
 from model.CringeVAE import CringeVAEModel
 from PIL import Image
 

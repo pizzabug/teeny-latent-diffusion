@@ -10,10 +10,11 @@ class CringeCLIPModel(pl.LightningModule):
         CringeCLIP
     """
 
-    def __init__(self, model_type="RN50", hparams=None, has_cross_attention=False, img_dim=512):
+    def __init__(self, just_the_tokenizer=False, model_type="RN50", hparams=None, has_cross_attention=False, img_dim=512):
         super().__init__()
 
-        self.clip_module, _, self.preprocess = open_clip.create_model_and_transforms("RN50") # type: ignore
+        if not just_the_tokenizer:
+            self.clip_module, _, self.preprocess = open_clip.create_model_and_transforms("RN50") # type: ignore
         self.tokenizer = open_clip.get_tokenizer("RN50") # type: ignore
 
     def forward(self, text = None, image = None):

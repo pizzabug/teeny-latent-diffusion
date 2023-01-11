@@ -5,6 +5,7 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 from utils import add_noise
+from model.OldCringeBERT import OldCringeBERTWrapper
 from model.CringeVAE import CringeVAEModel
 from model.CringeCLIP import CringeCLIPModel
 from model.unet.unet import UNet
@@ -25,6 +26,13 @@ class CringeDenoiserModel(pl.LightningModule):
         self.dropout = 0.02
         self.vae_model: CringeVAEModel = vae_model  # type: ignore
         self.clip_model: CringeCLIPModel = clip_model # type: ignore
+
+        """
+            BERT Wrapper for the text encoding
+            This should be an integrated part of the model
+            in the future
+        """
+        self.bertWrapper = OldCringeBERTWrapper()
 
         # Diffusion UNet
         self.UNet = UNet(
@@ -104,12 +112,7 @@ class CringeDenoiserModel(pl.LightningModule):
             # q = q.cuda()
 
         # Get q
-        with torch.no_grad():
-            if q is not None:
-                q = self.clip_model.forward(text=q)
-            else:
-                # Preprocess image and send it through clip. Right now a bit hard, so TODO.
-                return None
+        q = self.bertWrapper.model_output(q)
         
         # Generate x batch, which is a slightly noisier version of y
         x = add_noise(y)
@@ -138,13 +141,7 @@ class CringeDenoiserModel(pl.LightningModule):
             # q = q.cuda()
 
         # Get q
-        with torch.no_grad():
-            if q is not None:
-                q = self.clip_model.forward(text=q)
-            else:
-                # Preprocess image and send it through clip. Right now a bit hard, so TODO.
-                return None
-        
+        q = self.bertWrapper.model_output(q)
         # Forward pass
         y_hat = self(q)
         loss = F.l1_loss(y_hat, y)
@@ -155,19 +152,12 @@ class CringeDenoiserModel(pl.LightningModule):
 
         # Get the BERT output
         q = torch.tensor(
-            self.clip_model.tokenizer([query,])).unsqueeze(0)
+            self.bertWrapper.bert_tokenizer.encode(query)).unsqueeze(0)
 
         # if torch.cuda.is_available():
             # q = q.cuda()
 
-        # Get q
-        with torch.no_grad():
-            if q is not None:
-                q = self.clip_model.forward(text=q)
-            else:
-                # Preprocess image and send it through clip. Right now a bit hard, so TODO.
-                return None
-        
+        q = self.bertWrapper.model_output(q)
 
         # if torch.cuda.is_available():
         #     q = q.cuda()
