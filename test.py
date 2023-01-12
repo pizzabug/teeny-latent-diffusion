@@ -1,7 +1,7 @@
 
 import torch
 import torch.nn as nn
-from model.cringe.unet import ConvBlock, UpBlock, UNet
+from model.unet.unet import ConvBlock, UpBlock, UNet
 
 """
     UNet Test

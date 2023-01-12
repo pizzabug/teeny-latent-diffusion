@@ -1,10 +1,11 @@
+import numpy as np
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 
 from torch.nn import functional as F
 
-from utils import add_noise
+from utils import add_noise, convert_to_rgb, export_image_to_png
 from model.CringeVAE import CringeVAEModel
 from model.CringeCLIP import CringeCLIPModel
 from model.unet.unet import UNet
@@ -61,8 +62,8 @@ class CringeDenoiserModel(pl.LightningModule):
 
         # Load the image
         if x is None:
-            # Generate noise; q's batch dimension is at 1th element
-            x = torch.randn(q.shape[1], 3, self.img_dim, self.img_dim)
+            # Generate noise; q's batch dimension is at 0th element
+            x = torch.randn(q.shape[0], 3, self.img_dim, self.img_dim)
             x = x.to(q)
 
         # Put the image through the VAE
@@ -104,11 +105,15 @@ class CringeDenoiserModel(pl.LightningModule):
             # q = q.cuda()
         
         # Generate x batch, which is a slightly noisier version of y
-        x = add_noise(y)
+        noise_factor = np.random.randint(1,10)
+        x_noise, y_noise = (noise_factor)/10.0, (noise_factor - 1)/10.0
+
+        x = add_noise(y, x_noise)
+        y_targ = add_noise(y, y_noise)
 
         # Forward pass
-        y_hat = self.forward_with_q(query=q, x=x, steps=1)
-        loss = F.l1_loss(y_hat, y)
+        y_hat = self.forward_with_q(query=q, x=x, steps=1) 
+        loss = F.l1_loss(y_hat, y_targ)                         #type: ignore
         self.log('train_loss', loss)
 
         # Skip if resulting loss is NaN or Inf
@@ -130,12 +135,20 @@ class CringeDenoiserModel(pl.LightningModule):
             # q = q.cuda()
         
         # Generate x batch, which is a slightly noisier version of y
-        x = add_noise(y)
+        noise_factor = np.random.randint(1,10)
+        x_noise, y_noise = (noise_factor)/10.0, (noise_factor - 1)/10.0
+
+        x = add_noise(y, x_noise)
+        y_targ = add_noise(y, y_noise)
 
         # Forward pass
         y_hat = self.forward_with_q(q, x=x, steps=1)
-        loss = F.l1_loss(y_hat, y)
+        loss = F.l1_loss(y_hat, y_targ)
         self.log('val_loss', loss)
+     
+        # res = convert_to_rgb(y_hat[0].unsqueeze(0))
+        # export_image_to_png(res, f"denoiser/sample {q}.png")
+
         return loss
 
     def forward_with_q(self, query, x=None, steps=1):

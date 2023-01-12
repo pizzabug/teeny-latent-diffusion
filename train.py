@@ -14,7 +14,7 @@ from model.CringeDenoiser import CringeDenoiserModel
 from model.CringeVAE import CringeVAEModel
 from utils import RegularCheckpoint, train_save_checkpoint
 
-def train_denoiser():
+def train_denoiser(device='gpu'):
     # hparams while i'm working on it
     img_dim = 512
 
@@ -22,8 +22,8 @@ def train_denoiser():
     dataset = UnsplashLiteDataset(root_dir='/mnt/e/Source/unsplash-lite-corpus-preprocess/db', img_dim=img_dim)
     training_set, validation_set = torch.utils.data.random_split(dataset, [int(len(dataset)*0.8), len(dataset) - int(len(dataset)*0.8)])
 
-    train_loader = DataLoader(training_set, batch_size=2, collate_fn=dirty_collate)
-    val_loader = DataLoader(validation_set, batch_size=2, collate_fn=dirty_collate)
+    train_loader = DataLoader(training_set, batch_size=10, collate_fn=dirty_collate)
+    val_loader = DataLoader(validation_set, batch_size=10, collate_fn=dirty_collate)
 
     # Load CLIP checkpoint if it exists
     clip_model = CringeCLIPModel() #.to("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -46,7 +46,7 @@ def train_denoiser():
     denoiser_logger = TensorBoardLogger("tb_logs", name="cringeldm")
 
     denoiser_trainer = pl.Trainer(
-        accelerator='gpu', 
+        accelerator=device, 
         precision=16, 
         limit_train_batches=0.5, 
         callbacks=[
@@ -58,18 +58,18 @@ def train_denoiser():
                 do_img=False,
             ),
         ], 
-        accumulate_grad_batches=2,
+        accumulate_grad_batches=20,
         logger=denoiser_logger)
     while True:
-        #try:
+        try:
             # Load checkpoint if it exists 
             if (os.path.exists("checkpoints/ldm/model.ckpt")):
                 denoiser_trainer.fit(denoiser_model, train_loader, val_loader, ckpt_path="checkpoints/ldm/model.ckpt")
             else:
                 denoiser_trainer.fit(denoiser_model, train_loader, val_loader)
-        #except Exception as e:
-        #    tb = sys.exc_info()[2]
-        #    print(e.with_traceback(tb))
+        except Exception as e:
+            tb = sys.exc_info()[2]
+            print(e.with_traceback(tb))
         
 def train_vae():
     # hparams while i'm working on it
@@ -119,6 +119,8 @@ def train():
         return
     else:
         if args[0] == "denoiser":
+            if len(args) == 2:
+                train_denoiser(args[1])
             train_denoiser()
         elif args[0] == "vae":
             train_vae()

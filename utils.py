@@ -41,7 +41,7 @@ def add_noise(x, noise_factor=0.5):
     return x
 
 
-def import_image_from_path(path="/mnt/e/Source/unsplash-lite-corpus-preprocess/db/img/xQSLtWJqJ14.png", img_dim=256):
+def import_image_from_path(path="/mnt/e/Source/unsplash-lite-corpus-preprocess/db/img/xQSLtWJqJ14.png", img_dim=320):
     # Import an image from a file
     img = Image.open(path)
     # Resize the image
@@ -80,23 +80,24 @@ def train_save_image_with_q_denoiser(steps, trainer, model, checkpoint=False, ba
 
     images_to_log = []
     with torch.no_grad():
-        for caption in test_captions:
-            # Load the image
-            res = model.forward_with_q(query=caption, steps=20)
-            images_to_log.append(res[0])
+         for caption in test_captions:
+             res = model.forward_with_q(query=caption, steps=1)
 
-            # Convert the image to RGB
-            res = convert_to_rgb(res)
+             images_to_log.append(res[0])
 
-            # Show the image
-            plt.imshow(res)
+             # Convert the image to RGB
+             res = convert_to_rgb(res)
 
-            # Export the image
-            if checkpoint:
-                export_image_to_png(
-                    res, f"{base_dir}/{steps}/sample {caption}.png")
-            export_image_to_png(res, f"{base_dir}/sample {caption}.png")
+             # Show the image
+             plt.imshow(res)
 
+             # Export the image
+             if checkpoint:
+                 export_image_to_png(
+                     res, f"{base_dir}/{steps}/sample {caption}.png")
+             export_image_to_png(res, f"{base_dir}/sample {caption}.png")
+
+             del res    
     grid = torchvision.utils.make_grid(images_to_log)
     model.logger.experiment.add_image(
         f"lady on a walk, dog sitting, the sea, mountains, houses", grid, steps)
